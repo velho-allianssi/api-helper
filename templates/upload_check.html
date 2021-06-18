@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% macro create_table(node, color) %}
+    {% if color == 1 %}
+        <table class="table table-hover">
+    {% else %}
+        <table class="table table-hover pd-3">
+    {% endif %}
+            {% for key,value in node.items() %}
+            <tr>
+                <th scope="col" style="color: var(--{{color}})">{{key}}</th>
+            </tr>
+            <tr>
+                <td>
+                    {% if value is mapping %}
+                        {{ create_table(value, color+1) }}
+                    {% elif value is iterable and value is not string %}
+                        <ul class="list-group" style="list-style: none;">
+                            {% for element in value %}
+                                <li class="list-group-item">
+                                    {% if element is mapping %}
+                                        {{ create_table(element, color+1) }}
+                                    {% elif element is iterable and element is not string %}
+                                        <ul class="list-group" style="list-style: none;">
+                                            {% for nested_element in element %}
+                                                {{ nested_element }}
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        {{ element }}
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        {{ value }}    
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+{% endmacro %}
+
+{% block content %}
+    <h3 style="padding-bottom: 1%">{{target}}</h3>
+    <form action="/check_status/{{target}}" style="padding-bottom: 1%">
+        <input type="submit" value="Check status" class="btn btn-primary">
+    </form>
+    <ul class="list-group" style="list-style: none;">
+    {% for key, value in data.items() %}
+        <li style="padding-bottom: 1%">
+            <button class="dropdown-btn{{ key }} dropdown-button" style="align-content: center">{{key}}</button>
+            <div class="dropdown-container dc-box" style="display:none">
+                {% if value is mapping %}
+                    {{ create_table(value, 1)}}
+                {% elif value is iterable and value is not string %}
+                    <ul class="list-group" style="list-style: none;">
+                        {% for value2 in value %}
+                            <li class="list-group-item list-group-item-action">
+                                {{value2}}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="list-group-item list-group-item-action">
+                        {{value}}
+                    </p>
+                {% endif %}
+            </div>
+        </li>
+        <script>
+            var dropdown = document.getElementsByClassName("dropdown-btn{{key}}");
+            var i;
+  
+            for (i = 0; i < dropdown.length; i++) {
+              dropdown[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                var dropdownContent = this.nextElementSibling;
+                if (dropdownContent.style.display === "block") {
+                  dropdownContent.style.display = "none";
+                } else {
+                  dropdownContent.style.display = "block";
+                }
+              });
+            }
+          </script>
+    {% endfor %}
+    </ul>
+{% endblock %}

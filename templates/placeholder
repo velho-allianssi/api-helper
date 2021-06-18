@@ -1,0 +1,166 @@
+def urakat_csv(target):
+        data = kohdeluokka_dict(target)
+        content = data[0]
+        with open('target.csv', 'w', newline='') as csvfile:
+                #Valmistellaan käytettävät nimikkeet headeriin 
+                fieldnames = [
+                        'tilannepvm', 
+                        'piiri', 
+                        'tie', 
+                        'ajr', 
+                        'aosa', 
+                        'aet', 
+                        'ej', 
+                        'losa', 
+                        'let', 
+                        'pituus', 
+                        'tiety', 
+                        'kplk', 
+                        'alev', 
+                        'pt',   #muutettu paalluok -> pt(sidotut) ja spr(sitomattomat) 
+                        'spr',
+                        'pvty', 
+                        'pvalue',
+                        'pvnro',
+                        'pvsuoja',
+                        'pvsuola',
+                        'pvtaso',
+                        'pvteksti',
+                        'soratielk',
+                        'pyplk',
+                        'katyyppi',
+                        'kkvl',
+                        'ualue',
+                        'tualue',
+                        'viherlk']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=';')
+                writer.writeheader()
+                
+                # Haetaan token
+
+                auth_token = str(token())
+
+                # Haetaan käytettävät kohdeluokat, ja ryhmitellään ne teiden mukaan nopeampaa hakua varten
+
+                grouped_tieosat          = grouped_by_tie("kohdeluokka_sijainti_tieosa", auth_token)
+                grouped_talvihoitoluokat = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_talvihoitoluokka", auth_token)
+                grouped_viherhoitoluokat = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_viherhoitoluokka", auth_token)
+                grouped_sidotut         = grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sidotut-paallysrakenteet", auth_token)
+                grouped_sitomattomat    = grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sitomattomat-pintarakenteet", auth_token)
+                grouped_pohjavedet      = grouped_by_tie("kohdeluokka_alueet_pohjavesialueet", auth_token)
+                grouped_soratiet        = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_soratieluokka", auth_token)
+                grouped_korjausluokat   = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_paallysteen-korjausluokka", auth_token)
+
+
+                # Käydään läpi kohdeluokan objectit
+                for record in content:
+                        if "sijainnit" in record:
+                                sijainnit = record['sijainnit']
+                                for sijainti in sijainnit: 
+                                        if "alkusijainti" in sijainti and "loppusijainti" in sijainti:
+                                                alkusijainti  = sijainti['alkusijainti']
+                                                loppusijainti = sijainti['loppusijainti']
+                                                tie = alkusijainti["tie"]
+                                                aosa = alkusijainti["osa"]
+                                                losa = loppusijainti["osa"]
+                                                aet = alkusijainti["etaisyys"]
+                                                let = loppusijainti["etaisyys"]
+
+                                                # Haetaan pohjavesi ennen kirjoittamista, sillä sitä käytetään useaan kenttään
+                                                pohjavesi = finder(grouped_pohjavedet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", None)
+
+                                                # Haetaan sidotut päällysrakenteet ennen kirjoittamista, sillä objectin kaistan vertailulle pitää muodostaa if lause
+                                                sidotut_rakenteet = finder(grouped_sidotut.get(tie) or [], tie, aosa, aet, losa, let, None, None)
+                                                sidotut_rakenteet_tyyppi = None 
+                                                if sidotut_rakenteet and "sijaintitarkenne" in sidotut_rakenteet:
+                                                        if sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 11 or sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 21: 
+                                                                parts = sidotut_rakenteet["ominaisuudet"]["paallysteen-tyyppi"].split("/")
+                                                                sidotut_rakenteet_tyyppi = parts[1]
+                                             
+                                                writer.writerow({
+                                                        'tilannepvm'    : record['alkaen'] or None,
+                                                        'piiri'         : None, 
+                                                        'tie'           : tie or 0,
+                                                        'ajr'           : alkusijainti['ajorata'] or None,
+                                                        'aosa'          : aosa or 0,
+                                                        'aet'           : aet or 0,
+                                                        'ej'            : None,
+                                                        'losa'          : losa or 0,
+                                                        'let'           : let or 0,
+                                                        'pituus'        : int(let or 0) - int(aet or 0),
+                                                        'tiety'         : finder(grouped_tieosat.get(tie) or [], tie, aosa, aet, losa, let, "hallinnolliset-luokat", "hallinnollinen-luokka"), #Hallinnollinen luokka -> tieosa -> hallinnollisetluokat -> hallinnollinenluokka
+                                                        'kplk'          : finder(grouped_talvihoitoluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "talvihoitoluokka"), #Talvihoitoluokka
+                                                        'alev'          : None, #Ajoradanleveys hae tieosa/etäisyydet -> topologia -> hae kaistojen määrä -> laske kaistojen yhteenlaskettu leveys !!!topologia ei vielä latauspalvelussa
+                                                        'pt'            : sidotut_rakenteet_tyyppi, #sidotut päällysrakenteet paallystetyyppi ||  Päällysteet/pintarakenteet/  sijantitarkenne/kaista oltava 11 tai 21 huom tee kaksi kentää sidotutpäällysrakenteet päällysteentyyppi ja sitomattomat runkomateriaali
+                                                        'spr'           : finder(grouped_sitomattomat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "runkomateriaali"), #sitomattoman-pintarakenteen-runkomateriaali
+                                                        'pvty'          : pohjavesi["tyyppi"].split("/")[1] if pohjavesi else None, #Pohjavesialueen tyyppi
+                                                        'pvalue'        : pohjavesi["rakenteelliset-ominaisuudet"]["nimi"] if pohjavesi else None, #Pohjavesialue
+                                                        'pvnro'         : pohjavesi["toiminnalliset-ominaisuudet"]["tunnus"] if pohjavesi else None, #SYKE:n alueesta käyttämätunnus
+                                                        'pvsuoja'       : None, 
+                                                        'pvsuola'       : None,  
+                                                        'pvtaso'        : None, 
+                                                        'pvteksti'      : None, 
+                                                        'soratielk'     : finder(grouped_soratiet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "soratieluokka"), 
+                                                        'pyplk'         : finder(grouped_korjausluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "paallysteen-korjausluokka"), #Päällysteiden ylläpitoluokka
+                                                        'katyyppi'      : None,  #Kaistan tyyppi
+                                                        'kkvl'          : None,  #Kesän keskimääräinen vuorokausiliikenne
+                                                        'ualue'         : record['ominaisuudet']['urakkakoodi'],  #Urakka-alue / urakan koodi
+                                                        'tualue'        : None,  #Tulevan alueurakan numero
+                                                        'viherlk'       : finder(grouped_viherhoitoluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "viherhoitoluokka") #hae viherhoitoluokka ei viheralue
+                                                })
+
+                        elif "alkusijainti" in record and "loppusijainti" in record:
+                                alkusijainti  = record['alkusijainti']
+                                loppusijainti = record['loppusijainti']
+                                tie = alkusijainti["tie"]
+                                aosa = alkusijainti["osa"]
+                                losa = loppusijainti["osa"]
+                                aet = alkusijainti["etaisyys"]
+                                let = loppusijainti["etaisyys"]
+
+                                #Haetaan pohjavesi ennen kirjoittamista, sillä sitä käytetään useaan kenttään
+                                pohjavesi = finder(grouped_pohjavedet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", None)
+
+                                #Haetaan sidotut päällysrakenteet ennen kirjoittamista, sillä objectin kaistan vertailulle pitää muodostaa if else lause
+                                sidotut_rakenteet = finder(grouped_sidotut.get(tie) or [], tie, aosa, aet, losa, let, None, None)
+                                sidotut_rakenteet_tyyppi = None 
+                                if sidotut_rakenteet and "sijaintitarkenne" in sidotut_rakenteet:
+                                        if sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 11 or sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 21: 
+                                                parts = sidotut_rakenteet["ominaisuudet"]["tyyppi"].split("/")
+                                                sidotut_rakenteet_tyyppi = parts[1]
+                                
+                                writer.writerow({
+                                        'tilannepvm'    : record['alkaen'] or None,
+                                        'piiri'         : None, 
+                                        'tie'           : tie or 0,
+                                        'ajr'           : alkusijainti['ajorata'] or None,
+                                        'aosa'          : aosa or 0,
+                                        'aet'           : aet or 0,
+                                        'ej'            : None,
+                                        'losa'          : losa or 0,
+                                        'let'           : let or 0,
+                                        'pituus'        : int(let or 0) - int(aet or 0),
+                                        'tiety'         : finder(grouped_tieosat.get(tie) or [], tie, aosa, aet, losa, let, "hallinnolliset-luokat", "hallinnollinen-luokka"), #Hallinnollinen luokka -> tieosa -> hallinnollisetluokat -> hallinnollinenluokka
+                                        'kplk'          : finder(grouped_talvihoitoluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "talvihoitoluokka"), #Talvihoitoluokka
+                                        'alev'          : None, #Ajoradanleveys hae tieosa/etäisyydet -> topologia -> hae kaistojen määrä -> laske kaistojen yhteenlaskettu leveys !!!topologia ei vielä latauspalvelussa
+                                        'pt'            : sidotut_rakenteet_tyyppi, #sidotut päällysrakenteet paallystetyyppi ||  Päällysteet/pintarakenteet/  sijantitarkenne/kaista oltava 11 tai 21 huom tee kaksi kentää sidotutpäällysrakenteet päällysteentyyppi ja sitomattomat runkomateriaali
+                                        'spr'           : finder(grouped_sitomattomat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "runkomateriaali"), #sitomattoman-pintarakenteen-runkomateriaali
+                                        'pvty'          : pohjavesi["tyyppi"].split("/")[1] if pohjavesi else None, #Pohjavesialueen tyyppi
+                                        'pvalue'        : pohjavesi["rakenteelliset-ominaisuudet"]["nimi"] if pohjavesi else None, #Pohjavesialue
+                                        'pvnro'         : pohjavesi["toiminnalliset-ominaisuudet"]["tunnus"] if pohjavesi else None, #SYKE:n alueesta käyttämätunnus
+                                        'pvsuoja'       : None, 
+                                        'pvsuola'       : None,  
+                                        'pvtaso'        : None, 
+                                        'pvteksti'      : None, 
+                                        'soratielk'     : finder(grouped_soratiet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "soratieluokka"), 
+                                        'pyplk'         : finder(grouped_korjausluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "paallysteen-korjausluokka"), #Päällysteiden ylläpitoluokka
+                                        'katyyppi'      : None,  #Kaistan tyyppi
+                                        'kkvl'          : None,  #Kesän keskimääräinen vuorokausiliikenne
+                                        'ualue'         : record['ominaisuudet']['urakkakoodi'],  #Urakka-alue / urakan koodi
+                                        'tualue'        : None,  #Tulevan alueurakan numero
+                                        'viherlk'       : finder(grouped_viherhoitoluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "viherhoitoluokka") #hae viherhoitoluokka ei viheralue
+                                })
+        
+
+                        else: 
+                                pass

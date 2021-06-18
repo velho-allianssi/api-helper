@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block content %}
+    <h3 style="padding-bottom: 1%">{{target}}</h3>
+    <form action="/csv/tatu/{{target}}" style="padding-bottom: 1%">
+        <input type="submit" value="EXPORT as TATU CSV" class="btn btn-primary">
+    </form>
+    <ul class="list-group" style="list-style: none;">
+    {% for key, value in data.items() %}
+        <li style="padding-bottom: 1%">
+            <button class="dropdown-btn{{ key }} dropdown-button" style="align-content: center">{{key}}</button>
+            <div class="dropdown-container dc-box" style="display:none">
+                {% if value is mapping %}
+                    <table class="table">
+                        {% for key2,value2 in value.items() %}
+                            <tr>
+                                <th scope="col" style="color: #1B9CFC">{{key2}}</th>
+                            </tr>
+                            <tr>
+                                {% if value2 is mapping %}
+                                    <td>
+                                        <table class="table pd-3">
+                                            {% for key3, value3 in value2.items() %}
+                                                <tr>
+                                                    <th scope="col" style="color: #27ae60">{{key3}}</th>
+                                                </tr>
+                                                <tr>
+                                                    <td>
+                                                        {% if value3 is mapping %}
+                                                            <table class="table pd-3">
+                                                                {% for key4, value4 in value3.items() %}
+                                                                    {% if value4 is mapping %}
+                                                                    <td>
+                                                                        <table class="table pd-3">
+                                                                            {% for key5, value5 in value4.items() %}
+                                                                                <tr>
+                                                                                    <th scope="col" style="color: #27ae60">{{key5}}</th>
+                                                                                </tr>
+                                                                                <tr>
+                                                                                    <td>
+                                                                                        {% if value5 is mapping %}
+                                                                                            <table class="table pd-3">
+                                                                                                {% for key6, value6 in value5.items() %}
+                                                                                                    <tr>
+                                                                                                        <th scope="col" style="color: #F97F51">{{key6}}</th>
+                                                                                                    </tr>
+                                                                                                    <tr>
+                                                                                                        <td>{{value6}}</td>
+                                                                                                    </tr>
+                                                                                                {% endfor %}
+                                                                                            </table>
+                                                                                        {% elif value5 is iterable and value5 is not string %}
+                                                                                            <ul class="list-group" style="list-style: none;">
+                                                                                                {% for value6 in value5 %}
+                                                                                                    <li class="list-group-item list-group-item-action">
+                                                                                                        {{value6}}
+                                                                                                    </li>
+                                                                                                {% endfor %}
+                                                                                            </ul>
+                                                                                        {% else %}
+                                                                                            {{value5}}    
+                                                                                        {% endif %}
+                                                                                    </td>
+                                                                                </tr>
+                                                                            {% endfor %}
+                                                                        </table>
+                                                                    </td>
+                                                                    {% elif value4 is iterable and value4 is not string %}
+                                                                        <td>
+                                                                            <ul class="list-group" style="list-style: none;">
+                                                                            {% for element in value4 %}
+                                                                                <li class="list-group-item list-group-item-action">
+                                                                                    {% if element is mapping %}
+                                                                                        <table class="table pd-3">  
+                                                                                            {% for key5,value5 in element.items() %}
+                                                                                                <tr>
+                                                                                                    <th scope="col">{{key5}}</th>
+                                                                                                </tr>
+                                                                                                <tr>
+                                                                                                    <td>
+                                                                                                        {% if value5 is mapping %}
+                                                                                                            <table class="table pd-3">
+                                                                                                                {% for key6, value4 in value6.items() %}
+                                                                                                                    <tr>
+                                                                                                                        <th scope="col" style="color: #F97F51">{{key6}}</th>
+                                                                                                                    </tr>
+                                                                                                                    <tr>
+                                                                                                                        <td>{{value6}}</td>
+                                                                                                                    </tr>
+                                                                                                                {% endfor %}
+                                                                                                            </table>
+                                                                                                        {% elif value5 is iterable and value5 is not string %}
+                                                                                                            {% for value6 in value5 %}
+                                                                                                                {{value7}}
+                                                                                                            {% endfor %}
+                                                                                                        {% else %}
+                                                                                                            {{value7}}    
+                                                                                                        {% endif %}
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                            {% endfor %}
+                                                                                        </table>
+                                                                                    {% elif element is iterable and element is not string %}
+                                                                                        <ul class="list-group" style="list-style: none;">
+                                                                                            {% for nested_element in element %}
+                                                                                                {{ nested_element }}
+                                                                                            {% endfor %}
+                                                                                        </ul>
+                                                                                    {% else %}
+                                                                                        {{ element }}
+                                                                                    {% endif %}
+                                                                                </li>
+                                                                            {% endfor %}
+                                                                            </ul>
+                                                                        </td>
+                                                                    {% else %}
+                                                                        <td>{{value4}}</td>
+                                                                    {% endif %}
+                                                                {% endfor %}
+                                                            </table>
+                                                        {% elif value3 is iterable and value3 is not string %}
+                                                            <ul class="list-group" style="list-style: none;">
+                                                                {% for value4 in value3 %}
+                                                                    <li class="list-group-item list-group-item-action">
+                                                                        {{value4}}
+                                                                    </li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        {% else %}
+                                                            {{value3}}    
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </table>
+                                    </td>
+                                {% elif value2 is iterable and value2 is not string %}
+                                    <td>
+                                        <ul class="list-group" style="list-style: none;">
+                                        {% for element in value2 %}
+                                            <li class="list-group-item list-group-item-action">
+                                                {% if element is mapping %}
+                                                    <table class="table pd-3">  
+                                                        {% for key3,value3 in element.items() %}
+                                                            <tr>
+                                                                <th scope="col">{{key3}}</th>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    {% if value3 is mapping %}
+                                                                        <table class="table pd-3">
+                                                                            {% for key4, value4 in value3.items() %}
+                                                                                <tr>
+                                                                                    <th scope="col" style="color: #F97F51">{{key4}}</th>
+                                                                                </tr>
+                                                                                <tr>
+                                                                                    <td>{{value4}}</td>
+                                                                                </tr>
+                                                                            {% endfor %}
+                                                                        </table>
+                                                                    {% elif value3 is iterable and value3 is not string %}
+                                                                        {% for value4 in value3 %}
+                                                                            {{value4}}
+                                                                        {% endfor %}
+                                                                    {% else %}
+                                                                        {{value3}}    
+                                                                    {% endif %}
+                                                                </td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                    </table>
+                                                {% elif element is iterable and element is not string %}
+                                                    <ul class="list-group" style="list-style: none;">
+                                                        {% for nested_element in element %}
+                                                            {{ nested_element }}
+                                                        {% endfor %}
+                                                    </ul>
+                                                {% else %}
+                                                    {{ element }}
+                                                {% endif %}
+                                            </li>
+                                        {% endfor %}
+                                        </ul>
+                                    </td>
+                                {% else %}
+                                    <td>{{value2}}</td>
+                                {% endif %}
+                            </tr>       
+                        {% endfor %}
+                    </table>
+                {% elif value is iterable and value is not string %}
+                    <ul class="list-group" style="list-style: none;">
+                        {% for value2 in value %}
+                            <li class="list-group-item list-group-item-action">
+                                {{value2}}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="list-group-item list-group-item-action">
+                        {{value}}
+                    </p>
+                {% endif %}
+            </div>
+        </li>
+        <script>
+            var dropdown = document.getElementsByClassName("dropdown-btn{{key}}");
+            var i;
+  
+            for (i = 0; i < dropdown.length; i++) {
+              dropdown[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                var dropdownContent = this.nextElementSibling;
+                if (dropdownContent.style.display === "block") {
+                  dropdownContent.style.display = "none";
+                } else {
+                  dropdownContent.style.display = "block";
+                }
+              });
+            }
+          </script>
+    {% endfor %}
+    </ul>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+    <h3 style="padding-bottom: 1%">{{class_name}}</h3>
+    <ul class="list-group" style="list-style: none;">
+        {% for key in data %}
+        <li><a class="list-group-item list-group-item-action" href="/{{class_name}}/{{key}}">{{key}}</a></li>
+
+    {% endfor %}
+    </ul>
+{% endblock %}
