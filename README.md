@@ -7,6 +7,7 @@
   - py -m venv .venv or python3 -m venv .venv
 - Activate python env:
   - cd .venv -> cd scripts -> activate 
+  - (cd back to main folder: cd .. -> cd ..)
 - Install required packages:
   - pip install -r requirements.txt
 - Create .env file to main folder with:
