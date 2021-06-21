@@ -82,6 +82,7 @@ def meta_tiedot(class_name):
 # Tarkistaa ovatko ominaisuus ja tarkenne määriteltyjä, sekä kuuluvatko ne dict objectiin
 # Palauttaa joko koko objectin, obj[ominaisuuden] tai obj[ominaisuus][tarkenne]
 # split metodia käytetään siistimiseen, esim verkon-materiaali/mt01 otetaan vain mt01
+
 def check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne):
         if ominaisuus and ominaisuus in obj:
                 if tarkenne:
@@ -106,16 +107,6 @@ def check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne):
         else: 
                 return obj
 
-# Etsii listasta objectin, joka täyttää vaatimukset ja palauttaa joko obj[ominaisuus] tai obj[ominaisuus][tarkenne]
-# Esim. tieosan hallinnollisen luokan (tieosa/ominaisuudet/hallinnollinen-luokka) joka osuu tietylle tie/osa välille
-# obj_list = kohdeluokan objectit listana
-# tie = haettava tie
-# aosa = alun osa, aet = alun etäisyys, losa = lopun osa (jos kaksi sijaintia), let = lopun etäisyys
-# Objectit ovat dict muotoisia, jolloin ominaisuudella viitataan ensimmäiseen obj[__tahan__] hakuun (yleensä "ominaisuudet")
-# Tarkenne on sitten obj[ominaisuus][tarkenne] jos obj[ominaisuus] on myös dict muotoa
-# Jos tarkenetta == None, palauttaa obj[ominaisuus]
-# Jos ominaisuus == None, palauttaa objectin
-
 
 # Enkoodaus 100 milj * tienum + pituus 
 # Enkoodaus 300008782 = tie 3 etaisyys 8782
@@ -126,13 +117,26 @@ def encode(tie, etaisyys):
         return 100000000 * tie + etaisyys
 
 
+# loppu alun jälkeen, loppu ennen alkua
+# alku inklusiivinen loppu ekslusiivinen
+
 def encoded_in_range(obj_alku, obj_loppu, vertailtava_alku, vertailtava_loppu):
         if obj_alku <= vertailtava_loppu and obj_loppu > vertailtava_alku:
                 return True
         else: 
                 return False
 
-# Sijaintipalvelu -> tieosat -> enkoodattu
+# Etsii listasta objectin, joka täyttää vaatimukset ja palauttaa joko obj[ominaisuus] tai obj[ominaisuus][tarkenne]
+# Esim. tieosan hallinnollisen luokan (tieosa/ominaisuudet/hallinnollinen-luokka) joka osuu tietylle tie/osa välille
+# obj_list = kohdeluokan objectit listana
+# tie = haettava tie
+# aosa = alun osa, aet = alun etäisyys, losa = lopun osa (jos kaksi sijaintia), let = lopun etäisyys
+# Objectit ovat dict muotoisia, jolloin ominaisuudella viitataan ensimmäiseen obj[__tahan__] hakuun (yleensä "ominaisuudet")
+# Tarkenne on sitten obj[ominaisuus][tarkenne] jos obj[ominaisuus] on myös dict muotoa
+# Jos tarkenetta == None, palauttaa obj[ominaisuus]
+# Jos ominaisuus == None, palauttaa objectin
+
+# Hyödyntää teiden ja tieosien sijaan enkoodattuja sijainteja, muuten sama kuin finder
 
 def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne): 
         if not obj_list: 
@@ -158,9 +162,17 @@ def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus,
                                 return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
                         
 
+# Etsii listasta objectin, joka täyttää vaatimukset ja palauttaa joko obj[ominaisuus] tai obj[ominaisuus][tarkenne]
+# Esim. tieosan hallinnollisen luokan (tieosa/ominaisuudet/hallinnollinen-luokka) joka osuu tietylle tie/osa välille
+# obj_list = kohdeluokan objectit listana
+# tie = haettava tie
+# aosa = alun osa, aet = alun etäisyys, losa = lopun osa (jos kaksi sijaintia), let = lopun etäisyys
+# Objectit ovat dict muotoisia, jolloin ominaisuudella viitataan ensimmäiseen obj[__tahan__] hakuun (yleensä "ominaisuudet")
+# Tarkenne on sitten obj[ominaisuus][tarkenne] jos obj[ominaisuus] on myös dict muotoa
+# Jos tarkenetta == None, palauttaa obj[ominaisuus]
+# Jos ominaisuus == None, palauttaa objectin
+
 def finder(obj_list, tie, aosa, aet, losa, let, ominaisuus, tarkenne): 
-        #enkoodattu sijainti
-        #Jos ei sijaintitarkenne -> koko tie
         if not obj_list: 
                 return None
         for obj in obj_list: 
