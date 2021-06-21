@@ -116,7 +116,51 @@ def check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne):
 # Jos tarkenetta == None, palauttaa obj[ominaisuus]
 # Jos ominaisuus == None, palauttaa objectin
 
+
+# Enkoodaus 100 milj * tienum + pituus 
+# Enkoodaus 300008782 = tie 3 etaisyys 8782
+# loppu alun jälkeen, loppu ennen alkua
+# alku inklusiivinen loppu ekslusiivinen
+
+def encode(tie, etaisyys):
+        return 100000000 * tie + etaisyys
+
+
+def encoded_in_range(obj_alku, obj_loppu, vertailtava_alku, vertailtava_loppu):
+        if obj_alku <= vertailtava_loppu and obj_loppu > vertailtava_alku:
+                return True
+        else: 
+                return False
+
+# Sijaintipalvelu -> tieosat -> enkoodattu
+
+def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne): 
+        if not obj_list: 
+                return None
+        for obj in obj_list:
+                if "sijainnit" in obj:
+                        for sijainti in obj["sijainnit"]:
+                                alkusijainti  = sijainti["alkusijainti"]
+                                loppusijainti = sijainti["loppusijainti"]
+                                if alkusijainti["tie"] == tie and loppusijainti["tie"] == tie:
+                                        return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+
+                elif "alkusijainti" in obj and "loppusijainti" in obj:
+                        obj_alku  = obj["alkusijainti"]["enkoodattu"]
+                        obj_loppu = obj["loppusijainti"]["enkoodattu"]
+                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                
+                elif "tie" in obj: 
+                        obj_alku  = obj["enkoodattu-alku"]
+                        obj_loppu = obj["enkoodattu-loppu"]
+                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                        
+
 def finder(obj_list, tie, aosa, aet, losa, let, ominaisuus, tarkenne): 
+        #enkoodattu sijainti
+        #Jos ei sijaintitarkenne -> koko tie
         if not obj_list: 
                 return None
         for obj in obj_list: 
@@ -139,8 +183,6 @@ def finder(obj_list, tie, aosa, aet, losa, let, ominaisuus, tarkenne):
                                         elif loppusijainti["osa"] == losa: # and loppusijainti["etaisyys"] >= let: 
                                                 return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)   
 
-
-
                 elif "alkusijainti" in obj and "loppusijainti" in obj: 
                         alkusijainti = obj["alkusijainti"]
                         loppusijainti = obj["loppusijainti"]
@@ -154,8 +196,6 @@ def finder(obj_list, tie, aosa, aet, losa, let, ominaisuus, tarkenne):
                                         return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
                                 elif loppusijainti["osa"] == losa: # and loppusijainti["etaisyys"] >= let: 
                                         return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
-
-
 
                 elif "tie" in obj: 
                         if obj["tie"] == tie and obj["osa"] == aosa:
@@ -261,6 +301,7 @@ def to_tatu_csv(target):
                                                 'AET'   : alkusijainti['etaisyys']      or None,
                                         })
 
+# Yhdistelee kohdeluokkia tieosa kohdeluokkaan käyttämällä tie / tieosa / etaisyyksiä ja kirjoittaa tulokset csv tiedostoon
 
 def tieosat_csv():
         data = kohdeluokka_dict("kohdeluokka_sijainti_tieosa")
@@ -554,7 +595,4 @@ def urakat_csv(target):
                         else: 
                                 pass
                 
-
-
-
 #NIMIKKEISTÖ SELITYKSET METATIETO JSONISSA INFON ALLA                                            

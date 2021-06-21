@@ -1,6 +1,8 @@
 from flask import Flask, render_template, session
 import requests, json, ndjson
-import helpers
+from helpers import token, kohdeluokka_dict, meta_tiedot
+from csv_functions import tieosat_csv_encoded
+import csv
 import collections
 
 
@@ -17,7 +19,7 @@ def index():
 @app.route('/meta')
 def meta(): 
     token_url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/nimiavaruudet"
-    auth = 'Bearer ' + str(helpers.token())
+    auth = 'Bearer ' + str(token())
     data = {'accept': 'application/json'}
     api_call_headers = {'Authorization': auth}
     api_call_response = requests.get(token_url, headers=api_call_headers, data=data)
@@ -32,7 +34,7 @@ def meta():
 def get_specs(class_name):
 
     url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/metatiedot"
-    auth = 'Bearer ' + str(helpers.token())
+    auth = 'Bearer ' + str(token())
 
     data = '[ "' + class_name + '" ]'
     api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
@@ -55,7 +57,7 @@ def get_specs(class_name):
 def get_class(class_name, target):
     parts = target.split("_")
     if parts[0] == "kohdeluokka": 
-        content, path = helpers.kohdeluokka_dict(target)
+        content, path = kohdeluokka_dict(target)
         if type(content) is str: 
             return content
         else: 
@@ -65,7 +67,7 @@ def get_class(class_name, target):
             return render_template('target.html', data=as_dict, target=target, path=path)
 
     else:
-        data = helpers.meta_tiedot(class_name)
+        data = meta_tiedot(class_name)
         try: 
             return render_template('target.html', data=data[target], target=target)
         except: 
@@ -76,7 +78,7 @@ def get_class(class_name, target):
 def download_ndjson(target):
     parts = target.split("_") 
     url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json" 
-    auth = 'Bearer ' + str(helpers.token())
+    auth = 'Bearer ' + str(token())
     api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     api_call_response = requests.get(url, headers=api_call_headers)
 
@@ -86,7 +88,7 @@ def download_ndjson(target):
 
 @app.route('/lahetykset')
 def lahetykset():
-    auth = 'Bearer ' + str(helpers.token())
+    auth = 'Bearer ' + str(token())
     headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     url = "https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/tunnisteet" 
     response = requests.get(url, headers=headers)
@@ -102,7 +104,7 @@ def lahetykset():
 
 @app.route('/check_status/<tunniste>')
 def check_status(tunniste):
-    auth = 'Bearer ' + str(helpers.token())
+    auth = 'Bearer ' + str(token())
     headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     url = "https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/tila/" + tunniste
     response = requests.get(url, headers=headers)
@@ -112,14 +114,14 @@ def check_status(tunniste):
 def curl_put(target): 
     parts = target.split("_") 
     url = 'https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/laheta'
-    auth = 'Bearer ' + str(helpers.token())
+    auth = 'Bearer ' + str(token())
     headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     data = {"kohdeluokka": parts[1] + "/" + parts[2]}
     response = requests.post('https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/laheta', headers=headers, data=json.dumps(data))
     response_json = response.json()
     upload_url = response_json["url"]
 
-    payload, request_url = helpers.kohdeluokka_dict(target)
+    payload, request_url = kohdeluokka_dict(target)
     files = {'file': open('testi_toimenpide.json', 'rb')}
 
     requests.put(url, files=files, verify=False)
@@ -130,19 +132,19 @@ def curl_put(target):
 @app.route('/class/<target>/<oid>')
 def get_oid(target, oid):
     pass
-
+'''
 @app.route('/csv/tatu/<target>')
 def tatu_csv(target):
-    helpers.to_tatu_csv(target)
+    to_tatu_csv(target)
 
     return "success"
 @app.route('/csv/full/<target>')
 def full_csv(target): 
 
-    helpers.urakat_csv(target)
+    urakat_csv(target)
     return "success"
-
+'''
 @app.route('/csv/tieosat')
 def tieosat_csv():
-    helpers.tieosat_csv()
+    tieosat_csv_encoded()
     return "success"
