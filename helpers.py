@@ -115,7 +115,10 @@ def check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne):
 
 def encode(tie, etaisyys):
         return 100000000 * tie + etaisyys
-
+        
+# Palauttaa etaisyyden tien alusta/lopusta
+def decode_to_length(enkoodattu, tie):
+        return enkoodattu / tie / 10000000
 
 # loppu alun jälkeen, loppu ennen alkua
 # alku inklusiivinen loppu ekslusiivinen
@@ -126,40 +129,45 @@ def encoded_in_range(obj_alku, obj_loppu, vertailtava_alku, vertailtava_loppu):
         else: 
                 return False
 
-# Etsii listasta objectin, joka täyttää vaatimukset ja palauttaa joko obj[ominaisuus] tai obj[ominaisuus][tarkenne]
-# Esim. tieosan hallinnollisen luokan (tieosa/ominaisuudet/hallinnollinen-luokka) joka osuu tietylle tie/osa välille
-# obj_list = kohdeluokan objectit listana
-# tie = haettava tie
-# aosa = alun osa, aet = alun etäisyys, losa = lopun osa (jos kaksi sijaintia), let = lopun etäisyys
-# Objectit ovat dict muotoisia, jolloin ominaisuudella viitataan ensimmäiseen obj[__tahan__] hakuun (yleensä "ominaisuudet")
-# Tarkenne on sitten obj[ominaisuus][tarkenne] jos obj[ominaisuus] on myös dict muotoa
-# Jos tarkenetta == None, palauttaa obj[ominaisuus]
-# Jos ominaisuus == None, palauttaa objectin
 
-# Hyödyntää teiden ja tieosien sijaan enkoodattuja sijainteja, muuten sama kuin finder
 
-def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne): 
-        if not obj_list: 
-                return None
-        for obj in obj_list:
-                if "sijainnit" in obj:
-                        for sijainti in obj["sijainnit"]:
-                                alkusijainti  = sijainti["alkusijainti"]
-                                loppusijainti = sijainti["loppusijainti"]
-                                if alkusijainti["tie"] == tie and loppusijainti["tie"] == tie:
-                                        return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
+    results = []
+    if not obj_list: 
+            return None
+    for obj in obj_list:
+            if "sijainnit" in obj:
+                    for sijainti in obj["sijainnit"]:
+                            alkusijainti  = sijainti["alkusijainti"]
+                            loppusijainti = sijainti["loppusijainti"]
+                            if "enkoodattu" in alkusijainti:
+                                    obj_alku  = alkusijainti["enkoodattu"]
+                                    obj_loppu = loppusijainti["enkoodattu"]
+                                    if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                            results.append({'tie': tie, 'aosa': alkusijainti['osa'], 'aet': alkusijainti['etaisyys'], 'enka': obj_alku, 'losa': loppusijainti['osa'], 'let': loppusijainti['etaisyys'], 'enkl': obj_loppu, 'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)})
+                            else: 
+                                    obj_alku  = encode(alkusijainti["tie"], alkusijainti["osa"])
+                                    obj_loppu = encode(loppusijainti["tie"], loppusijainti["osa"])
+                                    if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                            results.append({'tie': tie, 'aosa': alkusijainti['osa'], 'aet': alkusijainti['etaisyys'], 'enka': obj_alku, 'losa': loppusijainti['osa'], 'let': loppusijainti['etaisyys'], 'enkl': obj_loppu, 'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)})
+                            '''
+                            if alkusijainti["tie"] == tie and loppusijainti["tie"] == tie:
+                                    return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                            '''
 
-                elif "alkusijainti" in obj and "loppusijainti" in obj:
-                        obj_alku  = obj["alkusijainti"]["enkoodattu"]
-                        obj_loppu = obj["loppusijainti"]["enkoodattu"]
-                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                                return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
-                
-                elif "tie" in obj: 
-                        obj_alku  = obj["enkoodattu-alku"]
-                        obj_loppu = obj["enkoodattu-loppu"]
-                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                                return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+            elif "alkusijainti" in obj and "loppusijainti" in obj:
+                    obj_alku  = obj["alkusijainti"]["enkoodattu"]
+                    obj_loppu = obj["loppusijainti"]["enkoodattu"]
+                    if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                            results.append({'tie': tie, 'aosa': obj["alkusijainti"]['osa'], 'aet': obj['alkusijainti']['etaisyys'], 'enka': obj_alku, 'losa': obj["loppusijainti"]['osa'], 'let': obj['loppusijainti']['etaisyys'], 'enkl': obj_loppu, 'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)})
+            
+            elif "tie" in obj: 
+                    obj_alku  = obj["enkoodattu-alku"]
+                    obj_loppu = obj["enkoodattu-loppu"]
+                    if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                            results.append({'tie': tie, 'aosa': obj['osa'], 'aet': 0, 'enka': obj_alku, 'losa': obj['osa'], 'let': obj_loppu - obj_alku, 'enkl': obj_loppu, 'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)})
+
+    return results
                         
 
 # Etsii listasta objectin, joka täyttää vaatimukset ja palauttaa joko obj[ominaisuus] tai obj[ominaisuus][tarkenne]
@@ -169,10 +177,10 @@ def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus,
 # aosa = alun osa, aet = alun etäisyys, losa = lopun osa (jos kaksi sijaintia), let = lopun etäisyys
 # Objectit ovat dict muotoisia, jolloin ominaisuudella viitataan ensimmäiseen obj[__tahan__] hakuun (yleensä "ominaisuudet")
 # Tarkenne on sitten obj[ominaisuus][tarkenne] jos obj[ominaisuus] on myös dict muotoa
-# Jos tarkenetta == None, palauttaa obj[ominaisuus]
+# Jos tarkenne == None, palauttaa obj[ominaisuus]
 # Jos ominaisuus == None, palauttaa objectin
 
-def finder(obj_list, tie, aosa, aet, losa, let, ominaisuus, tarkenne): 
+def finder(obj_list, tie, aosa, losa, ominaisuus, tarkenne): 
         if not obj_list: 
                 return None
         for obj in obj_list: 
@@ -243,7 +251,63 @@ def group_by_tie(obj_list):
                                         grouped[alkusijainti["tie"]] = cur
                                 else: 
                                         grouped[alkusijainti["tie"]] = [obj]
-        return grouped        
+        return grouped 
+
+# Jos kohdeluokan sijainti ylittää tieosan, pilkotaan se osiin
+# tieosat on lista tieosia jollain tiellä, obj on pilkottavan kohdeluokan objecti 
+def split_at_parts(tieosat, obj):
+        result = []
+        try: 
+                alku  = obj["alkusijainti"] 
+                loppu = obj["loppusijainti"]
+
+                if alku["osa"] != loppu["osa"]:
+                        tieosa_alku = finder(tieosat, alku["tie"], alku["osa"], alku("osa"), None, None)
+                        new_obj = obj
+                        new_obj["loppusijainti"]["osa"]      = alku["osa"]
+                        new_obj["loppusijainti"]["etaisyys"] = tieosa_alku["pituus"]
+                        new_obj["loppusijainti"]["etaisyys-tien-alusta"] = alku["etaisyys-tien-alusta"] + tieosa_alku["pituus"]
+                        new_obj["loppusijainti"]["enkoodattu"] = alku["enkoodattu"] + tieosa_alku["pituus"]
+                        result.append(new_obj)
+                        i = alku["osa"]+1
+                        while i < loppu["osa"]:
+                                tieosa_cur = finder(tieosat, alku["tie"], i, i, None, None)
+                                cur_obj = obj
+                                alku = {
+                                        'osa': tieosa_cur["osa"],
+                                        'tie': tieosa_cur["tie"],
+                                        'etaisyys': 0,
+                                        'etaisyys-tien-alusta': tieosa_cur["alun-etaisyys-tien-alusta"],
+                                        'enkoodattu': tieosa_cur["enkoodattu-alku"],
+                                        'ajorata': alku["ajorata"]
+                                }
+                                loppu = {
+                                        'osa': tieosa_cur["osa"],
+                                        'tie': tieosa_cur["tie"],
+                                        'etaisyys': tieosa_cur["pituus"],
+                                        'etaisyys-tien-alusta': tieosa_cur["lopun-etaisyys-tien-alusta"],
+                                        'enkoodattu': tieosa_cur["enkoodattu-loppu"],
+                                        'ajorata': alku["ajorata"]
+                                }
+                                cur_obj["alkusijainti"] = alku
+                                cur_obj["loppusijainti"] = loppu
+                                result.append(cur_obj)
+
+                        last_obj = obj
+                        last_obj["alkusijainti"]["osa"] = loppu["osa"]
+                        last_obj["alkusijainti"]["etaisyys"] = 0
+                        last_obj["alkusijainti"]["etaisyys-tien-alusta"] = result[-1]["loppusijainti"]["etaisyys-tien-alusta"]
+                        last_obj["alkusijainti"]["enkoodattu"] = result[-1]["loppusijainti"]["enkoodattu"]
+                        result.append(last_obj)
+        except: 
+                pass
+
+        return result       
+
+
+# Yhdistelee kahden kohdeluokan sijainnit tieosalla
+def combine_locations(ojb1, obj2): 
+        pass
 
 # Käytännössä vain kutsuu group_by_tie ja kohdeluokka_dict_same_token functiota siistimmän koodin takia
 def grouped_by_tie(target, auth_token): 
@@ -437,174 +501,5 @@ def tieosat_csv():
                                 'pyplk'         : finder(grouped_korjausluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "paallysteen-korjausluokka"),
                                 'soratielk'     : finder(grouped_soratiet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "soratieluokka")
                         })
-
-def urakat_csv(target):
-        data = kohdeluokka_dict(target)
-        content = data[0]
-        date = datetime.today().strftime('%d-%m-%Y')
-        filename = date + "-" + target + ".csv"
-        with open(filename, 'w', newline='') as csvfile:
-                #Valmistellaan käytettävät nimikkeet headeriin 
-                fieldnames = [
-                        'tilannepvm', 
-                        'piiri', 
-                        'tie', 
-                        'ajr', 
-                        'aosa', 
-                        'aet', 
-                        'ej', 
-                        'losa', 
-                        'let', 
-                        'pituus', 
-                        'tiety', 
-                        'kplk', 
-                        'alev', 
-                        'pt',   #muutettu paalluok -> pt(sidotut) ja spr(sitomattomat) 
-                        'spr',
-                        'pvty', 
-                        'pvalue',
-                        'pvnro',
-                        'pvsuoja',
-                        'pvsuola',
-                        'pvtaso',
-                        'pvteksti',
-                        'soratielk',
-                        'pyplk',
-                        'katyyppi',
-                        'kkvl',
-                        'ualue',
-                        'tualue',
-                        'viherlk']
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=';')
-                writer.writeheader()
-                
-                # Haetaan token
-
-                auth_token = str(token())
-
-                # Haetaan käytettävät kohdeluokat, ja ryhmitellään ne teiden mukaan nopeampaa hakua varten
-
-                grouped_tieosat          = grouped_by_tie("kohdeluokka_sijainti_tieosa", auth_token)
-                grouped_talvihoitoluokat = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_talvihoitoluokka", auth_token)
-                grouped_viherhoitoluokat = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_viherhoitoluokka", auth_token)
-                grouped_sidotut         = grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sidotut-paallysrakenteet", auth_token)
-                grouped_sitomattomat    = grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sitomattomat-pintarakenteet", auth_token)
-                grouped_pohjavedet      = grouped_by_tie("kohdeluokka_alueet_pohjavesialueet", auth_token)
-                grouped_soratiet        = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_soratieluokka", auth_token)
-                grouped_korjausluokat   = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_paallysteen-korjausluokka", auth_token)
-
-
-                # Käydään läpi kohdeluokan objectit
-                for record in content:
-                        if "sijainnit" in record:
-                                sijainnit = record['sijainnit']
-                                for sijainti in sijainnit: 
-                                        if "alkusijainti" in sijainti and "loppusijainti" in sijainti:
-                                                alkusijainti  = sijainti['alkusijainti']
-                                                loppusijainti = sijainti['loppusijainti']
-                                                tie = alkusijainti["tie"]
-                                                aosa = alkusijainti["osa"]
-                                                losa = loppusijainti["osa"]
-                                                aet = alkusijainti["etaisyys"]
-                                                let = loppusijainti["etaisyys"]
-
-                                                # Haetaan pohjavesi ennen kirjoittamista, sillä sitä käytetään useaan kenttään
-                                                pohjavesi = finder(grouped_pohjavedet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", None)
-
-                                                # Haetaan sidotut päällysrakenteet ennen kirjoittamista, sillä objectin kaistan vertailulle pitää muodostaa if lause
-                                                sidotut_rakenteet = finder(grouped_sidotut.get(tie) or [], tie, aosa, aet, losa, let, None, None)
-                                                sidotut_rakenteet_tyyppi = None 
-                                                if sidotut_rakenteet and "sijaintitarkenne" in sidotut_rakenteet:
-                                                        if sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 11 or sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 21: 
-                                                                parts = sidotut_rakenteet["ominaisuudet"]["paallysteen-tyyppi"].split("/")
-                                                                sidotut_rakenteet_tyyppi = parts[1]
-                                             
-                                                writer.writerow({
-                                                        'tilannepvm'    : record['alkaen'] or None,
-                                                        'piiri'         : None, 
-                                                        'tie'           : tie or 0,
-                                                        'ajr'           : alkusijainti['ajorata'] or None,
-                                                        'aosa'          : aosa or 0,
-                                                        'aet'           : aet or 0,
-                                                        'ej'            : None,
-                                                        'losa'          : losa or 0,
-                                                        'let'           : let or 0,
-                                                        'pituus'        : int(let or 0) - int(aet or 0),
-                                                        'tiety'         : finder(grouped_tieosat.get(tie) or [], tie, aosa, aet, losa, let, "hallinnolliset-luokat", "hallinnollinen-luokka"), #Hallinnollinen luokka -> tieosa -> hallinnollisetluokat -> hallinnollinenluokka
-                                                        'kplk'          : finder(grouped_talvihoitoluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "talvihoitoluokka"), #Talvihoitoluokka
-                                                        'alev'          : None, #Ajoradanleveys hae tieosa/etäisyydet -> topologia -> hae kaistojen määrä -> laske kaistojen yhteenlaskettu leveys !!!topologia ei vielä latauspalvelussa
-                                                        'pt'            : sidotut_rakenteet_tyyppi, #sidotut päällysrakenteet paallystetyyppi ||  Päällysteet/pintarakenteet/  sijantitarkenne/kaista oltava 11 tai 21 huom tee kaksi kentää sidotutpäällysrakenteet päällysteentyyppi ja sitomattomat runkomateriaali
-                                                        'spr'           : finder(grouped_sitomattomat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "runkomateriaali"), #sitomattoman-pintarakenteen-runkomateriaali
-                                                        'pvty'          : pohjavesi["tyyppi"].split("/")[1] if pohjavesi else None, #Pohjavesialueen tyyppi
-                                                        'pvalue'        : pohjavesi["rakenteelliset-ominaisuudet"]["nimi"] if pohjavesi else None, #Pohjavesialue
-                                                        'pvnro'         : pohjavesi["toiminnalliset-ominaisuudet"]["tunnus"] if pohjavesi else None, #SYKE:n alueesta käyttämätunnus
-                                                        'pvsuoja'       : None, 
-                                                        'pvsuola'       : None,  
-                                                        'pvtaso'        : None, 
-                                                        'pvteksti'      : None, 
-                                                        'soratielk'     : finder(grouped_soratiet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "soratieluokka"), 
-                                                        'pyplk'         : finder(grouped_korjausluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "paallysteen-korjausluokka"), #Päällysteiden ylläpitoluokka
-                                                        'katyyppi'      : None,  #Kaistan tyyppi
-                                                        'kkvl'          : None,  #Kesän keskimääräinen vuorokausiliikenne
-                                                        'ualue'         : record['ominaisuudet']['urakkakoodi'],  #Urakka-alue / urakan koodi
-                                                        'tualue'        : None,  #Tulevan alueurakan numero
-                                                        'viherlk'       : finder(grouped_viherhoitoluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "viherhoitoluokka") #hae viherhoitoluokka ei viheralue
-                                                })
-
-                        elif "alkusijainti" in record and "loppusijainti" in record:
-                                alkusijainti  = record['alkusijainti']
-                                loppusijainti = record['loppusijainti']
-                                tie = alkusijainti["tie"]
-                                aosa = alkusijainti["osa"]
-                                losa = loppusijainti["osa"]
-                                aet = alkusijainti["etaisyys"]
-                                let = loppusijainti["etaisyys"]
-
-                                #Haetaan pohjavesi ennen kirjoittamista, sillä sitä käytetään useaan kenttään
-                                pohjavesi = finder(grouped_pohjavedet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", None)
-
-                                #Haetaan sidotut päällysrakenteet ennen kirjoittamista, sillä objectin kaistan vertailulle pitää muodostaa if else lause
-                                sidotut_rakenteet = finder(grouped_sidotut.get(tie) or [], tie, aosa, aet, losa, let, None, None)
-                                sidotut_rakenteet_tyyppi = None 
-                                if sidotut_rakenteet and "sijaintitarkenne" in sidotut_rakenteet:
-                                        if sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 11 or sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 21: 
-                                                parts = sidotut_rakenteet["ominaisuudet"]["tyyppi"].split("/")
-                                                sidotut_rakenteet_tyyppi = parts[1]
-                                
-                                writer.writerow({
-                                        'tilannepvm'    : record['alkaen'] or None,
-                                        'piiri'         : None, 
-                                        'tie'           : tie or 0,
-                                        'ajr'           : alkusijainti['ajorata'] or None,
-                                        'aosa'          : aosa or 0,
-                                        'aet'           : aet or 0,
-                                        'ej'            : None,
-                                        'losa'          : losa or 0,
-                                        'let'           : let or 0,
-                                        'pituus'        : int(let or 0) - int(aet or 0),
-                                        'tiety'         : finder(grouped_tieosat.get(tie) or [], tie, aosa, aet, losa, let, "hallinnolliset-luokat", "hallinnollinen-luokka"), #Hallinnollinen luokka -> tieosa -> hallinnollisetluokat -> hallinnollinenluokka
-                                        'kplk'          : finder(grouped_talvihoitoluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "talvihoitoluokka"), #Talvihoitoluokka
-                                        'alev'          : None, #Ajoradanleveys hae tieosa/etäisyydet -> topologia -> hae kaistojen määrä -> laske kaistojen yhteenlaskettu leveys !!!topologia ei vielä latauspalvelussa
-                                        'pt'            : sidotut_rakenteet_tyyppi, #sidotut päällysrakenteet paallystetyyppi ||  Päällysteet/pintarakenteet/  sijantitarkenne/kaista oltava 11 tai 21 huom tee kaksi kentää sidotutpäällysrakenteet päällysteentyyppi ja sitomattomat runkomateriaali
-                                        'spr'           : finder(grouped_sitomattomat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "runkomateriaali"), #sitomattoman-pintarakenteen-runkomateriaali
-                                        'pvty'          : pohjavesi["tyyppi"].split("/")[1] if pohjavesi else None, #Pohjavesialueen tyyppi
-                                        'pvalue'        : pohjavesi["rakenteelliset-ominaisuudet"]["nimi"] if pohjavesi else None, #Pohjavesialue
-                                        'pvnro'         : pohjavesi["toiminnalliset-ominaisuudet"]["tunnus"] if pohjavesi else None, #SYKE:n alueesta käyttämätunnus
-                                        'pvsuoja'       : None, 
-                                        'pvsuola'       : None,  
-                                        'pvtaso'        : None, 
-                                        'pvteksti'      : None, 
-                                        'soratielk'     : finder(grouped_soratiet.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "soratieluokka"), 
-                                        'pyplk'         : finder(grouped_korjausluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "paallysteen-korjausluokka"), #Päällysteiden ylläpitoluokka
-                                        'katyyppi'      : None,  #Kaistan tyyppi
-                                        'kkvl'          : None,  #Kesän keskimääräinen vuorokausiliikenne
-                                        'ualue'         : record['ominaisuudet']['urakkakoodi'],  #Urakka-alue / urakan koodi
-                                        'tualue'        : None,  #Tulevan alueurakan numero
-                                        'viherlk'       : finder(grouped_viherhoitoluokat.get(tie) or [], tie, aosa, aet, losa, let, "ominaisuudet", "viherhoitoluokka") #hae viherhoitoluokka ei viheralue
-                                })
-        
-
-                        else: 
-                                pass
                 
 #NIMIKKEISTÖ SELITYKSET METATIETO JSONISSA INFON ALLA                                            

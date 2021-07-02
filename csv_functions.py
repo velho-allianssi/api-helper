@@ -3,7 +3,73 @@ import time, datetime
 from datetime import datetime
 from helpers import kohdeluokka_dict, grouped_by_tie, token,  finder_encoded
 
-# Hyödyntää enkoodattuja sijainteja teiden ja tie osien sijaan.
+
+# Enkoodaus 100 milj * tienum + pituus 
+# Enkoodaus 300008782 = tie 3 etaisyys 8782
+# loppu alun jälkeen, loppu ennen alkua
+# alku inklusiivinen loppu ekslusiivinen
+
+def encode(tie, etaisyys):
+        return 100000000 * tie + etaisyys
+
+
+# loppu alun jälkeen, loppu ennen alkua
+# alku inklusiivinen loppu ekslusiivinen
+
+def encoded_in_range(obj_alku, obj_loppu, vertailtava_alku, vertailtava_loppu):
+        if obj_alku <= vertailtava_loppu and obj_loppu > vertailtava_alku:
+                return True
+        else: 
+                return False
+
+# Etsii listasta objectin, joka täyttää vaatimukset ja palauttaa joko obj[ominaisuus] tai obj[ominaisuus][tarkenne]
+# Esim. tieosan hallinnollisen luokan (tieosa/ominaisuudet/hallinnollinen-luokka) joka osuu tietylle tie/osa välille
+# obj_list = kohdeluokan objectit listana
+# tie = haettava tie
+# aosa = alun osa, aet = alun etäisyys, losa = lopun osa (jos kaksi sijaintia), let = lopun etäisyys
+# Objectit ovat dict muotoisia, jolloin ominaisuudella viitataan ensimmäiseen obj[__tahan__] hakuun (yleensä "ominaisuudet")
+# Tarkenne on sitten obj[ominaisuus][tarkenne] jos obj[ominaisuus] on myös dict muotoa
+# Jos tarkenne == None, palauttaa obj[ominaisuus]
+# Jos ominaisuus == None, palauttaa objectin
+
+# Hyödyntää teiden ja tieosien sijaan enkoodattuja sijainteja, muuten sama kuin finder
+
+def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
+        if not obj_list: 
+                return None
+        for obj in obj_list:
+                if "sijainnit" in obj:
+                        for sijainti in obj["sijainnit"]:
+                                alkusijainti  = sijainti["alkusijainti"]
+                                loppusijainti = sijainti["loppusijainti"]
+                                if "enkoodattu" in alkusijainti:
+                                        obj_alku  = alkusijainti["enkoodattu"]
+                                        obj_loppu = loppusijainti["enkoodattu"]
+                                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                                return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                                else: 
+                                        obj_alku  = encode(alkusijainti["tie"], alkusijainti["osa"])
+                                        obj_loppu = encode(loppusijainti["tie"], loppusijainti["osa"])
+                                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                                return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                                '''
+                                if alkusijainti["tie"] == tie and loppusijainti["tie"] == tie:
+                                        return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                                '''
+
+                elif "alkusijainti" in obj and "loppusijainti" in obj:
+                        obj_alku  = obj["alkusijainti"]["enkoodattu"]
+                        obj_loppu = obj["loppusijainti"]["enkoodattu"]
+                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                
+                elif "tie" in obj: 
+                        obj_alku  = obj["enkoodattu-alku"]
+                        obj_loppu = obj["enkoodattu-loppu"]
+                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+
+# Hyödyntää enkoodattuja sijainteja teiden ja tieosien sijaan.
 # Jos enkoodattua sijaintia ei ole, oletetaan että kohdeluokka kattaa koko tien. 
 def tieosat_csv_encoded():
         data = kohdeluokka_dict("kohdeluokka_sijainti_tieosa")
@@ -76,8 +142,7 @@ def tieosat_csv_encoded():
                         sidotut_rakenteet_tyyppi = None 
                         if sidotut_rakenteet and "sijaintitarkenne" in sidotut_rakenteet:
                                 if sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 11 or sidotut_rakenteet["sijaintitarkenne"]["kaista"] == 21: 
-                                        parts = sidotut_rakenteet["ominaisuudet"]["paallysteen-tyyppi"].split("/")
-                                        sidotut_rakenteet_tyyppi = parts[1]
+                                        sidotut_rakenteet_tyyppi = sidotut_rakenteet["ominaisuudet"]["paallysteen-tyyppi"].split("/")[1]
                                 
                         #Haetaan kaista ennen kirjoittamista, sillä sen ominaisuustieto vaatii kolme avainta: obj[avain][avain][avain]
                         alev_rakenteelliset = finder_encoded(grouped_kaistat.get(tie) or [], tie, e_alku, e_loppu, "ominaisuudet", "rakenteelliset-ominaisuudet")
@@ -87,8 +152,8 @@ def tieosat_csv_encoded():
 
                         # Kaistapaallyste voidaan hakea useasta kohdeluokasta. Käydään kohdeluokat läpi yksikerrallaan, jotta ei tarvitse käyä niitä kaikkia läpi, jos haluttu tulos löytyy aiemmasta kohdeluokasta
                         kaistapaallyste = None
-                        if sidotut_rakenteet:
-                                kaistapaallyste = sidotut_rakenteet["ominaisuudet"]["paallysteen-tyyppi"].split("/")[1]
+                        if sidotut_rakenteet_tyyppi:
+                                kaistapaallyste = sidotut_rakenteet_tyyppi
                         else:
                                 sitomattomat_rakenteet = finder_encoded(grouped_sitomattomat.get(tie) or [], tie, e_alku, e_loppu, "ominaisuudet", "runkomateriaali")
                                 if sitomattomat_rakenteet:

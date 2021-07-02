@@ -1,9 +1,11 @@
 from flask import Flask, render_template, session
 import requests, json, ndjson
 from helpers import token, kohdeluokka_dict, meta_tiedot
+import csv_functions
 from csv_functions import tieosat_csv_encoded
-import csv
-import collections
+from csv_urakat import urakat_csv_encoded
+from csv_homogenisoitu import CsvLinearReference
+
 
 
 app = Flask(__name__)
@@ -146,5 +148,6 @@ def full_csv(target):
 '''
 @app.route('/csv/tieosat')
 def tieosat_csv():
-    tieosat_csv_encoded()
+    obj = CsvLinearReference()
+    obj.write_and_run()
     return "success"
