@@ -1,12 +1,22 @@
 import requests, json, ndjson
 import csv
-import itertools
 import os
 import time, datetime
 from datetime import datetime
+import sys
+
+# Tee oma funktio parts = target.split("_") 
+# url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json" 
+# auth = 'Bearer ' + str(token())
+# api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
+# api_call_response = requests.get(url, headers=api_call_headers)
+# Näille
+
+# Finder ja apufunktiot omaan tiedostoon
+
 
 # Hakee tokenin jota hyödynnetään muiden funktioiden get ja post pyyntöjen headerin auth osiossa
-def token(): 
+def get_token(): 
         token_url = "https://auth.stg.velho.vayla.fi/oauth2/token"
 
         test_api_url = "https://api-v2.stg.velho.vayla.fi"
@@ -23,15 +33,31 @@ def token():
         return tokens['access_token']
 
 
+def api_call_data(url, data, method): 
+        url = url 
+        url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/metatiedot"
+        auth = 'Bearer ' + str(get_token())
+
+        data = '[ "' + data + '" ]' 
+        api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
+        if method == 'post':
+                return requests.post(url, headers=api_call_headers, data=data) 
+        else: 
+                return requests.get(url, headers=api_call_headers, data=data) 
+
+def api_call_data_kohdeluokka(kohdeluokka, token): 
+        parts = kohdeluokka.split("_") 
+        url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json"
+        auth = 'Bearer ' + str(get_token()) if not token else 'Bearer ' + token
+        api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
+        return requests.get(url, headers=api_call_headers), url
+
+
 # Palauttaa listan tietyn kohdeluokan objecteista, sekä hakemiseen käytetyn url:n
 # target tulee muodossa kohdeluokka_nimiavaruus_kohdeluokan_nimi
 # esim. kohdeluokka_varusteet_aidat tai kohdeluokka_urakka_palvelusopimus 
-def kohdeluokka_dict(target):
-        parts = target.split("_") 
-        url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json" 
-        auth = 'Bearer ' + str(token())
-        api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
-        api_call_response = requests.get(url, headers=api_call_headers)
+def kohdeluokka_dict(kohdeluokka):
+        api_call_response, url = api_call_data_kohdeluokka(kohdeluokka, None)
         try: 
                 #purkaa ndjsonin python listaksi
                 content = api_call_response.json(cls=ndjson.Decoder)
@@ -44,12 +70,8 @@ def kohdeluokka_dict(target):
         return content, url 
 
 # Sama kuin kohdeluokka_dict mutta ei hae uutta tokenia
-def kohdeluokka_dict_same_token(target, token):
-        parts = target.split("_") 
-        url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json" 
-        auth = 'Bearer ' + token
-        api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
-        api_call_response = requests.get(url, headers=api_call_headers)
+def kohdeluokka_dict_same_token(kohdeluokka, token):
+        api_call_response, url = api_call_data_kohdeluokka(kohdeluokka, token)
         try: 
                 content = api_call_response.json(cls=ndjson.Decoder)
                 content = content[1:]
@@ -61,7 +83,7 @@ def kohdeluokka_dict_same_token(target, token):
 # Hakee metatietopalvelusta kohdeluokkien nimet ja nimikkeistöt
 def meta_tiedot(class_name): 
         url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/metatiedot"
-        auth = 'Bearer ' + str(token())
+        auth = 'Bearer ' + str(get_token())
 
         data = '[ "' + class_name + '" ]'
         api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
@@ -130,6 +152,83 @@ def encoded_in_range(obj_alku, obj_loppu, vertailtava_alku, vertailtava_loppu):
                 return False
 
 
+# Apufunktio finder_encoded funktiolle
+# Kutsutaan jos käsiteltävä objecti sisältää "sijainnit"
+def finder_encoded_sijannit(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
+        results = results
+        for sijainti in obj["sijainnit"]:
+                alkusijainti  = sijainti["alkusijainti"]
+                loppusijainti = sijainti["loppusijainti"]
+                if "enkoodattu" in alkusijainti:
+                        obj_alku  = alkusijainti["enkoodattu"]
+                        obj_loppu = loppusijainti["enkoodattu"]
+                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                # Rivitä nämä
+                                results.append({
+                                        'tie': tie, 
+                                        'aosa': alkusijainti['osa'], 
+                                        'aet': alkusijainti['etaisyys'], 
+                                        'enkoodattu_alku': obj_alku, 
+                                        'losa': loppusijainti['osa'], 
+                                        'let': loppusijainti['etaisyys'], 
+                                        'enkoodattu_loppu': obj_loppu, 
+                                        'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                                        })
+                else: 
+                        obj_alku  = encode(alkusijainti["tie"], alkusijainti["osa"])
+                        obj_loppu = encode(loppusijainti["tie"], loppusijainti["osa"])
+                        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                                results.append({
+                                        'tie': tie, 
+                                        'aosa': alkusijainti['osa'], 
+                                        'aet': alkusijainti['etaisyys'], 
+                                        'enkoodattu_alku': obj_alku, 
+                                        'losa': loppusijainti['osa'], 
+                                        'let': loppusijainti['etaisyys'], 
+                                        'enkoodattu_loppu': obj_loppu, 
+                                        'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                                        })
+                return results
+
+# Apufunktio finder_encoded funktiolle
+# Kutsutaan jos käsiteltävä objecti sisältää "alkusijainti" tai "loppusijainti"
+
+def finder_encoded_yksi_sijainti(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
+        results = results
+        obj_alku  = obj["alkusijainti"]["enkoodattu"]
+        obj_loppu = obj["loppusijainti"]["enkoodattu"]
+        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                results.append({
+                        'tie': tie, 
+                        'aosa': obj["alkusijainti"]['osa'], 
+                        'aet': obj['alkusijainti']['etaisyys'], 
+                        'enkoodattu_alku': obj_alku, 
+                        'losa': obj["loppusijainti"]['osa'], 
+                        'let': obj['loppusijainti']['etaisyys'], 
+                        'enkoodattu_loppu': obj_loppu, 
+                        'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                        })
+        return results
+
+# Apufunktio finder_encoded funktiolle
+# Kutsutaan jos käsiteltävä objecti sisältää "tie", eli käytännössä vain sijainti/tieosa kohdeluokalle
+
+def finder_encoded_tieosat(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
+        obj_alku  = obj["enkoodattu-alku"]
+        obj_loppu = obj["enkoodattu-loppu"]
+        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
+                results.append({
+                        'tie': tie, 
+                        'aosa': obj['osa'], 
+                        'aet': 0, 
+                        'enkoodattu_alku': obj_alku, 
+                        'losa': obj['osa'], 
+                        'let': obj_loppu - obj_alku, 
+                        'enkoodattu_loppu': obj_loppu, 
+                        'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                        })
+
+# Etsii tietyn kohdeluokan objectit tietyllä enkoodatulla välillä 
 
 def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
     results = []
@@ -137,35 +236,11 @@ def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus,
             return None
     for obj in obj_list:
             if "sijainnit" in obj:
-                    for sijainti in obj["sijainnit"]:
-                            alkusijainti  = sijainti["alkusijainti"]
-                            loppusijainti = sijainti["loppusijainti"]
-                            if "enkoodattu" in alkusijainti:
-                                    obj_alku  = alkusijainti["enkoodattu"]
-                                    obj_loppu = loppusijainti["enkoodattu"]
-                                    if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                                            results.append({'tie': tie, 'aosa': alkusijainti['osa'], 'aet': alkusijainti['etaisyys'], 'enka': obj_alku, 'losa': loppusijainti['osa'], 'let': loppusijainti['etaisyys'], 'enkl': obj_loppu, 'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)})
-                            else: 
-                                    obj_alku  = encode(alkusijainti["tie"], alkusijainti["osa"])
-                                    obj_loppu = encode(loppusijainti["tie"], loppusijainti["osa"])
-                                    if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                                            results.append({'tie': tie, 'aosa': alkusijainti['osa'], 'aet': alkusijainti['etaisyys'], 'enka': obj_alku, 'losa': loppusijainti['osa'], 'let': loppusijainti['etaisyys'], 'enkl': obj_loppu, 'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)})
-                            '''
-                            if alkusijainti["tie"] == tie and loppusijainti["tie"] == tie:
-                                    return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
-                            '''
-
+                    results = finder_encoded_sijannit(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
             elif "alkusijainti" in obj and "loppusijainti" in obj:
-                    obj_alku  = obj["alkusijainti"]["enkoodattu"]
-                    obj_loppu = obj["loppusijainti"]["enkoodattu"]
-                    if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                            results.append({'tie': tie, 'aosa': obj["alkusijainti"]['osa'], 'aet': obj['alkusijainti']['etaisyys'], 'enka': obj_alku, 'losa': obj["loppusijainti"]['osa'], 'let': obj['loppusijainti']['etaisyys'], 'enkl': obj_loppu, 'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)})
-            
+                    results = finder_encoded_yksi_sijainti(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
             elif "tie" in obj: 
-                    obj_alku  = obj["enkoodattu-alku"]
-                    obj_loppu = obj["enkoodattu-loppu"]
-                    if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                            results.append({'tie': tie, 'aosa': obj['osa'], 'aet': 0, 'enka': obj_alku, 'losa': obj['osa'], 'let': obj_loppu - obj_alku, 'enkl': obj_loppu, 'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)})
+                    results = finder_encoded_tieosat(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
 
     return results
                         
@@ -222,8 +297,19 @@ def finder(obj_list, tie, aosa, losa, ominaisuus, tarkenne):
                                 return check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
         return None
 
+
+# group_by_tie ja split at parts omaan tiedostoon
 # Ryhmittelee kohdeluokan objectit teiden perusteella
 # Palauttaa dictionaryn jolla voi hakea dict_name[__tien numero__] objectit tietyllä tiellä
+# Pilko kolmeen functioon
+def group_by_tie_tie(grouped, obj):
+        if obj["tie"] in grouped: 
+                cur = grouped[obj["tie"]]
+                cur.append(obj)
+                grouped[obj["tie"]] = cur
+        else: 
+                grouped[obj["tie"]] = [obj]
+
 def group_by_tie(obj_list): 
         grouped = {}
         for obj in obj_list:
@@ -262,12 +348,14 @@ def split_at_parts(tieosat, obj):
                 loppu = obj["loppusijainti"]
 
                 if alku["osa"] != loppu["osa"]:
-                        tieosa_alku = finder(tieosat, alku["tie"], alku["osa"], alku("osa"), None, None)
+                        tieosa_alku = finder(tieosat, alku["tie"], alku["osa"], alku["osa"], None, None)
+
                         new_obj = obj
                         new_obj["loppusijainti"]["osa"]      = alku["osa"]
                         new_obj["loppusijainti"]["etaisyys"] = tieosa_alku["pituus"]
                         new_obj["loppusijainti"]["etaisyys-tien-alusta"] = alku["etaisyys-tien-alusta"] + tieosa_alku["pituus"]
                         new_obj["loppusijainti"]["enkoodattu"] = alku["enkoodattu"] + tieosa_alku["pituus"]
+
                         result.append(new_obj)
                         i = alku["osa"]+1
                         while i < loppu["osa"]:
@@ -293,21 +381,22 @@ def split_at_parts(tieosat, obj):
                                 cur_obj["loppusijainti"] = loppu
                                 result.append(cur_obj)
 
+                        second_last_obj = result[-1]
+
                         last_obj = obj
-                        last_obj["alkusijainti"]["osa"] = loppu["osa"]
-                        last_obj["alkusijainti"]["etaisyys"] = 0
-                        last_obj["alkusijainti"]["etaisyys-tien-alusta"] = result[-1]["loppusijainti"]["etaisyys-tien-alusta"]
-                        last_obj["alkusijainti"]["enkoodattu"] = result[-1]["loppusijainti"]["enkoodattu"]
+                        last_obj["alkusijainti"]["osa"]         = loppu["osa"]
+                        last_obj["alkusijainti"]["etaisyys"]    = 0
+                        last_obj["alkusijainti"]["etaisyys-tien-alusta"] = second_last_obj["loppusijainti"]["etaisyys-tien-alusta"]
+                        last_obj["alkusijainti"]["enkoodattu"]           = second_last_obj["loppusijainti"]["enkoodattu"]
+
                         result.append(last_obj)
-        except: 
-                pass
+        
+        except Exception as e: 
+                        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
 
         return result       
 
 
-# Yhdistelee kahden kohdeluokan sijainnit tieosalla
-def combine_locations(ojb1, obj2): 
-        pass
 
 # Käytännössä vain kutsuu group_by_tie ja kohdeluokka_dict_same_token functiota siistimmän koodin takia
 def grouped_by_tie(target, auth_token): 
@@ -315,13 +404,6 @@ def grouped_by_tie(target, auth_token):
         data = as_dict[0]
         return group_by_tie(data)
 
-def etaisyys_laskin(aosa, aet, losa, let): 
-        if aosa == losa: 
-                return let-aet
-        else: 
-                diff = losa - aosa
-                # TODO
-                return None
 
 # Tuottaa minimikentät täyttävän csv tiedoston tatulle
 def to_tatu_csv(target):
@@ -414,7 +496,7 @@ def tieosat_csv():
                 
                 # Haetaan token
 
-                auth_token = str(token())
+                auth_token = str(get_token())
 
                 grouped_tieosat          = grouped_by_tie("kohdeluokka_sijainti_tieosa", auth_token)
                 grouped_talvihoitoluokat = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_talvihoitoluokka", auth_token)

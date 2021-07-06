@@ -1,7 +1,7 @@
 import csv
 import time, datetime
 from datetime import datetime
-from helpers import kohdeluokka_dict, grouped_by_tie, token,  finder_encoded
+from helpers import kohdeluokka_dict, grouped_by_tie, get_token,  finder_encoded
 
 # Hyödyntää enkoodattuja sijainteja teiden ja tieosien sijaan.
 # Jos enkoodattua sijaintia ei ole, oletetaan että kohdeluokka kattaa koko tien. 
@@ -40,7 +40,7 @@ def urakat_csv_encoded():
                 
                 # Haetaan token
 
-                auth_token = str(token())
+                auth_token = str(get_token())
 
                 grouped_tieosat             = grouped_by_tie("kohdeluokka_sijainti_tieosa", auth_token)
                 grouped_talvihoitoluokat    = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_talvihoitoluokka", auth_token)
