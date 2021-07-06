@@ -3,6 +3,7 @@ import time, datetime
 from datetime import datetime
 from helpers import grouped_by_tie, get_token,  finder_encoded, split_at_parts
 import sys
+import copy
 
 # Muuttujien nimet selkeämmäksi esim enkoodattu_alku => enkoodattu_alku
 
@@ -95,47 +96,57 @@ class CsvLinearReference:
                         return None
                 except: 
                         return None
-        
-
-        def current_object(self, prev_result, obj_type, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
-                result = []
+        # Finder encoded saataa suurentaa vanhoja aet ja let välejä jos uuden kohdaluokan pituus on suurempi kuin aikasemman
+        # Rivien määrä : 36425
+        def generate_rows(self, prev_result, obj_type, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, rows):
+                #result_list = []
                 try: 
                         if obj_type != 'kaistapa':
+                                # Haetaan kohdeluokan objecti lista
                                 cur = self.kohdeluokat[obj_type]
+                                # Etsitään kohdeluokan objecti listasta objectit jotka ovat tietyllä enkoodatulla välillä
                                 class_obj = finder_encoded(cur.get(prev_result['tie']) or [], prev_result['tie'], enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
+                                # Jos objectejä löytyy
                                 if class_obj:
-                                        print(len(class_obj))
-                                        for obj in class_obj:
-                                                #print(str(prev_result['aosa']) + " and aet " + str(obj['aet']) + " and let " + str(obj['let']))
-                                                new_result = prev_result
+                                        print("-------------------ennen------------------")
+                                        # Käydään objectit läpi
+                                        for kohdeluokka in class_obj:
+                                                print(kohdeluokka)
+                                                # Kopioidaan kohdeluokka objecti ettei se muutu
+                                                obj = copy.deepcopy(kohdeluokka)
+                                                # Kopioidaan vanha result jottei se muutu
+                                                new_result = copy.deepcopy(prev_result)
+                                                # Täytetään kohdeluokan objectin tiedot uuteen resulttiin
                                                 new_result['aet'] = obj['aet']
                                                 new_result['let'] = obj['let']
                                                 new_result['pituus'] = obj['enkoodattu_loppu'] - obj['enkoodattu_alku']
                                                 new_result[obj_type] = obj['value']
-
+                                                # Haetaan seuraavan kohdeluokan avain
                                                 next_type = self.next_key(prev_result, obj_type)
-                                                
+                                                # Kutsutaan uudestaan generate_rows funktiota, uudella resultilla sekä uudella kohdeluokalla
                                                 if next_type and next_type != 'kaistapa': 
-                                                        self.current_object(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], self.paths[next_type][0], self.paths[next_type][1])
+                                                        self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], self.paths[next_type][0], self.paths[next_type][1], rows)
                                                 elif next_type and next_type == 'kaistapa':
-                                                        self.current_object(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], None, None)
+                                                        self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], None, None, rows)
+                                                # Jos seuraavaa kohdeluokkaa ei ole, lisätään tulos listaan joka palautetaan
                                                 else:
-                                                        result.append(new_result)
+                                                        rows.append(new_result)
+
+                                        print("-------------------jälkeen-------------------")
                                 else: 
                                         next_type = self.next_key(prev_result, obj_type)
                                         if next_type and next_type != 'kaistapa': 
-                                                self.current_object(prev_result, next_type, enkoodattu_alku, enkoodattu_loppu, self.paths[next_type][0], self.paths[next_type][1])
+                                                self.generate_rows(prev_result, next_type, enkoodattu_alku, enkoodattu_loppu, self.paths[next_type][0], self.paths[next_type][1], rows)
                                         elif next_type and next_type == 'kaistapa':
-                                                self.current_object(prev_result, next_type, enkoodattu_alku, enkoodattu_loppu, None, None)
+                                                self.generate_rows(prev_result, next_type, enkoodattu_alku, enkoodattu_loppu, None, None, rows)
                                         else:
-                                                result.append(prev_result)
+                                                rows.append(prev_result)
                         
                         else: 
-
                                 kaistapaallyste = self.find_kaistapaallyste(prev_result, enkoodattu_alku, enkoodattu_loppu)
                                 if kaistapaallyste: 
                                         for obj in kaistapaallyste:
-                                                new_result = prev_result
+                                                new_result = copy.deepcopy(prev_result)
 
                                                 new_result['aet'] = obj['aet']
                                                 new_result['let'] = obj['let']
@@ -144,17 +155,17 @@ class CsvLinearReference:
 
                                                 next_type = self.next_key(prev_result, obj_type)
                                                 if next_type: 
-                                                        self.current_object(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], self.paths[next_type][0], self.paths[next_type][1])
+                                                        self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], self.paths[next_type][0], self.paths[next_type][1], rows)
                                                 else:
-                                                        result.append(new_result)
+                                                        rows.append(new_result)
                 except Exception as e: 
                         print('In CSV Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
+                '''
+                if not result_list: 
+                        result_list.append(prev_result)
 
-                if not result: 
-                        result.append(prev_result)
-
-                return result        
-
+                return result_list        
+                '''
 
 
         def writable_objects(self):
@@ -198,10 +209,11 @@ class CsvLinearReference:
                                 }
 
                                 # Call recursive function to fill missing classes 
-                                recursion = self.current_object(result, 'vluonne', enkoodattu_alku, enkoodattu_loppu, self.paths['vluonne'][0], self.paths['vluonne'][1])
+                                rows = []
+                                self.generate_rows(result, 'vluonne', enkoodattu_alku, enkoodattu_loppu, self.paths['vluonne'][0], self.paths['vluonne'][1], rows)
 
-                                # current_object is recursive function that might return more than one result so iterate over returned values and add them to list
-                                for r in recursion:
+                                # generate_rows is recursive function that might return more than one result so iterate over returned values and add them to list
+                                for r in rows:
                                         if r:
                                                 results.append(r)
                 

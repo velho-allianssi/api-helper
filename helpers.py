@@ -4,6 +4,7 @@ import os
 import time, datetime
 from datetime import datetime
 import sys
+import copy
 
 # Tee oma funktio parts = target.split("_") 
 # url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json" 
@@ -109,19 +110,16 @@ def check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne):
         if ominaisuus and ominaisuus in obj:
                 if tarkenne:
                         if type(obj[ominaisuus]) is dict:
-                                ominaisuudet = obj[ominaisuus]
                                 try: 
-                                        parts = ominaisuudet[tarkenne].split("/")
-                                        return parts[1] 
+                                        return obj[ominaisuus][tarkenne].split("/")[1]
                                 except: 
-                                        return ominaisuudet[tarkenne]
+                                        return obj[ominaisuus][tarkenne]
                         else: 
                                 ominaisuudet = obj[ominaisuus]
                                 for i in ominaisuudet: 
                                         if tarkenne in i: 
                                                 try: 
-                                                        parts = i[tarkenne].split("/")
-                                                        return parts[1] 
+                                                        return i[tarkenne].split("/")[1]
                                                 except: 
                                                         return i[tarkenne]
                 else: 
@@ -145,8 +143,8 @@ def decode_to_length(enkoodattu, tie):
 # loppu alun jälkeen, loppu ennen alkua
 # alku inklusiivinen loppu ekslusiivinen
 
-def encoded_in_range(obj_alku, obj_loppu, vertailtava_alku, vertailtava_loppu):
-        if obj_alku <= vertailtava_loppu and obj_loppu > vertailtava_alku:
+def encoded_in_range(enkoodattu_alku, enkoodattu_loppu, vertailtava_alku, vertailtava_loppu):
+        if enkoodattu_alku <= vertailtava_loppu and enkoodattu_loppu > vertailtava_alku:
                 return True
         else: 
                 return False
@@ -193,12 +191,12 @@ def finder_encoded_sijannit(obj, results, tie, enkoodattu_alku, enkoodattu_loppu
 # Apufunktio finder_encoded funktiolle
 # Kutsutaan jos käsiteltävä objecti sisältää "alkusijainti" tai "loppusijainti"
 
-def finder_encoded_yksi_sijainti(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
-        results = results
+def finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
+        result = None
         obj_alku  = obj["alkusijainti"]["enkoodattu"]
         obj_loppu = obj["loppusijainti"]["enkoodattu"]
         if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                results.append({
+                result = {
                         'tie': tie, 
                         'aosa': obj["alkusijainti"]['osa'], 
                         'aet': obj['alkusijainti']['etaisyys'], 
@@ -207,17 +205,18 @@ def finder_encoded_yksi_sijainti(obj, results, tie, enkoodattu_alku, enkoodattu_
                         'let': obj['loppusijainti']['etaisyys'], 
                         'enkoodattu_loppu': obj_loppu, 
                         'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
-                        })
-        return results
+                        }
+        return result
 
 # Apufunktio finder_encoded funktiolle
 # Kutsutaan jos käsiteltävä objecti sisältää "tie", eli käytännössä vain sijainti/tieosa kohdeluokalle
 
-def finder_encoded_tieosat(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
+def finder_encoded_tieosat(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
+        result = None
         obj_alku  = obj["enkoodattu-alku"]
         obj_loppu = obj["enkoodattu-loppu"]
         if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                results.append({
+                result = {
                         'tie': tie, 
                         'aosa': obj['osa'], 
                         'aet': 0, 
@@ -226,8 +225,8 @@ def finder_encoded_tieosat(obj, results, tie, enkoodattu_alku, enkoodattu_loppu,
                         'let': obj_loppu - obj_alku, 
                         'enkoodattu_loppu': obj_loppu, 
                         'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
-                        })
-
+                        }
+        return result
 # Etsii tietyn kohdeluokan objectit tietyllä enkoodatulla välillä 
 
 def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
@@ -238,9 +237,13 @@ def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus,
             if "sijainnit" in obj:
                     results = finder_encoded_sijannit(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
             elif "alkusijainti" in obj and "loppusijainti" in obj:
-                    results = finder_encoded_yksi_sijainti(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
+                    find = finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
+                    if find: 
+                            results.append(find)
             elif "tie" in obj: 
-                    results = finder_encoded_tieosat(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
+                    find = finder_encoded_tieosat(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
+                    if find: 
+                            results.append(find)
 
     return results
                         
@@ -341,26 +344,30 @@ def group_by_tie(obj_list):
 
 # Jos kohdeluokan sijainti ylittää tieosan, pilkotaan se osiin
 # tieosat on lista tieosia jollain tiellä, obj on pilkottavan kohdeluokan objecti 
-def split_at_parts(tieosat, obj):
+
+# Tuplaa tulosten määrän, ongelma täällä??
+
+def split_at_parts(tieosat, kohdeluokka):
         result = []
         try: 
-                alku  = obj["alkusijainti"] 
-                loppu = obj["loppusijainti"]
+                alku  = kohdeluokka["alkusijainti"] 
+                loppu = kohdeluokka["loppusijainti"]
 
                 if alku["osa"] != loppu["osa"]:
+
                         tieosa_alku = finder(tieosat, alku["tie"], alku["osa"], alku["osa"], None, None)
 
-                        new_obj = obj
-                        new_obj["loppusijainti"]["osa"]      = alku["osa"]
-                        new_obj["loppusijainti"]["etaisyys"] = tieosa_alku["pituus"]
-                        new_obj["loppusijainti"]["etaisyys-tien-alusta"] = alku["etaisyys-tien-alusta"] + tieosa_alku["pituus"]
-                        new_obj["loppusijainti"]["enkoodattu"] = alku["enkoodattu"] + tieosa_alku["pituus"]
+                        new_kohdeluokka = copy.deepcopy(kohdeluokka)
+                        new_kohdeluokka["loppusijainti"]["osa"]      = alku["osa"]
+                        new_kohdeluokka["loppusijainti"]["etaisyys"] = tieosa_alku["pituus"]
+                        new_kohdeluokka["loppusijainti"]["etaisyys-tien-alusta"] = alku["etaisyys-tien-alusta"] + tieosa_alku["pituus"]
+                        new_kohdeluokka["loppusijainti"]["enkoodattu"] = alku["enkoodattu"] + tieosa_alku["pituus"]
+                        result.append(new_kohdeluokka)
+                        i = alku["osa"] + 1
 
-                        result.append(new_obj)
-                        i = alku["osa"]+1
                         while i < loppu["osa"]:
                                 tieosa_cur = finder(tieosat, alku["tie"], i, i, None, None)
-                                cur_obj = obj
+                                cur_kohdeluokka = copy.deepcopy(kohdeluokka)
                                 alku = {
                                         'osa': tieosa_cur["osa"],
                                         'tie': tieosa_cur["tie"],
@@ -377,23 +384,26 @@ def split_at_parts(tieosat, obj):
                                         'enkoodattu': tieosa_cur["enkoodattu-loppu"],
                                         'ajorata': alku["ajorata"]
                                 }
-                                cur_obj["alkusijainti"] = alku
-                                cur_obj["loppusijainti"] = loppu
-                                result.append(cur_obj)
+                                cur_kohdeluokka["alkusijainti"] = alku
+                                cur_kohdeluokka["loppusijainti"] = loppu
+                                result.append(cur_kohdeluokka)
+                                i = i + 1 
 
-                        second_last_obj = result[-1]
+                        second_last_kohdeluokka = result[-1]
 
-                        last_obj = obj
-                        last_obj["alkusijainti"]["osa"]         = loppu["osa"]
-                        last_obj["alkusijainti"]["etaisyys"]    = 0
-                        last_obj["alkusijainti"]["etaisyys-tien-alusta"] = second_last_obj["loppusijainti"]["etaisyys-tien-alusta"]
-                        last_obj["alkusijainti"]["enkoodattu"]           = second_last_obj["loppusijainti"]["enkoodattu"]
+                        last_kohdeluokka = copy.deepcopy(kohdeluokka)
+                        last_kohdeluokka["alkusijainti"]["osa"]         = loppu["osa"]
+                        last_kohdeluokka["alkusijainti"]["etaisyys"]    = 0
+                        last_kohdeluokka["alkusijainti"]["etaisyys-tien-alusta"] = second_last_kohdeluokka["loppusijainti"]["etaisyys-tien-alusta"]
+                        last_kohdeluokka["alkusijainti"]["enkoodattu"]           = second_last_kohdeluokka["loppusijainti"]["enkoodattu"]
 
-                        result.append(last_obj)
+                        result.append(last_kohdeluokka)
         
         except Exception as e: 
                         print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
 
+        if not result: 
+                result.append(kohdeluokka)
         return result       
 
 
