@@ -15,13 +15,15 @@ class CsvLinearReference:
                                 'kplk'          : grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_talvihoitoluokka", auth_token),
                                 'viherlk'       : grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_viherhoitoluokka", auth_token),
                                 # ---
-                                'kaistapa'      : {
-                                        'sidotut'          : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sidotut-paallysrakenteet", auth_token),
-                                        'sitomattomat'     : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sitomattomat-pintarakenteet", auth_token),
-                                        'ladottavat'       : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_ladottavat-pintarakenteet", auth_token),
-                                        'pintaukset'       : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_pintaukset", auth_token),
-                                        'kasvillisuudet '  : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_kasvillisuusrakenteet", auth_token)
-                                },
+                                
+                                #'kaistapa'      : {
+                                #        'sidotut'          : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sidotut-paallysrakenteet", auth_token),
+                                #        'sitomattomat'     : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sitomattomat-pintarakenteet", auth_token),
+                                #        'ladottavat'       : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_ladottavat-pintarakenteet", auth_token),
+                                #        'pintaukset'       : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_pintaukset", auth_token),
+                                #        'kasvillisuudet '  : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_kasvillisuusrakenteet", auth_token)
+                                #},
+                                
                                 # ---
                                 'toiml'         : grouped_by_tie("kohdeluokka_alueet_pohjavesialueet", auth_token),
                                 'soratielk'     : grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_soratieluokka", auth_token),
@@ -35,13 +37,14 @@ class CsvLinearReference:
                         'kplk'          : ["ominaisuudet", "talvihoitoluokka"],
                         'viherlk'       : ["ominaisuudet", "viherhoitoluokka"],
                         # ---
-                        'kaistapa'      : {
-                                'sidotut'          : ["ominaisuudet", "paallysteen-tyyppi"],
-                                'sitomattomat'     : ["ominaisuudet", "runkomateriaali"],
-                                'ladottavat'       : ["ominaisuudet", "materiaali"],
-                                'pintaukset'       : ["ominaisuudet", "pintauksen-tyyppi"],
-                                'kasvillisuudet '  : ["ominaisuudet", "materiaali"],
-                        },
+                        
+                        #'kaistapa'      : {
+                        #        'sidotut'          : ["ominaisuudet", "paallysteen-tyyppi"],
+                        #        'sitomattomat'     : ["ominaisuudet", "runkomateriaali"],
+                        #        'ladottavat'       : ["ominaisuudet", "materiaali"],
+                        #        'pintaukset'       : ["ominaisuudet", "pintauksen-tyyppi"],
+                        #        'kasvillisuudet '  : ["ominaisuudet", "materiaali"],
+                        #},
                         # --- 
                         'toiml'         : ["ominaisuudet", "toiminnallinen-luokka"],
                         'soratielk'     : ["ominaisuudet", "soratieluokka"],
@@ -50,14 +53,19 @@ class CsvLinearReference:
                         'toiml'         : ["ominaisuudet", "toiminnallinen-luokka"],
                         'vluonne'       : ["ominaisuudet", "vaylan-luonne"],
                 }
-        
+
         def to_roadparts(self):
                 for key,value in self.kohdeluokat.items(): 
                         if key != 'tieosat':
                                 for tie, object in value.items(): 
                                         for obj in object:
                                                 if tie in self.kohdeluokat['tieosat']:
-                                                        obj = split_at_parts(self.kohdeluokat['tieosat'][tie], obj)
+                                                        new_parts = split_at_parts(self.kohdeluokat['tieosat'][tie], obj)
+                                                        if len(new_parts) > 1:
+                                                                object.remove(obj)
+                                                                for b in new_parts: 
+                                                                        object.append(b)
+
 
         def find_kaistapaallyste(self, prev_result, enkoodattu_alku, enkoodattu_loppu):
                 kaistapaallyste = None
@@ -96,8 +104,9 @@ class CsvLinearReference:
                         return None
                 except: 
                         return None
+                        
         # Finder encoded saataa suurentaa vanhoja aet ja let välejä jos uuden kohdaluokan pituus on suurempi kuin aikasemman
-        # Rivien määrä : 36425
+        # Rivien määrä : n. 6000
         def generate_rows(self, prev_result, obj_type, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, rows):
                 #result_list = []
                 try: 
@@ -108,10 +117,11 @@ class CsvLinearReference:
                                 class_obj = finder_encoded(cur.get(prev_result['tie']) or [], prev_result['tie'], enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
                                 # Jos objectejä löytyy
                                 if class_obj:
-                                        print("-------------------ennen------------------")
+  
+                                        #print("-------------------ennen------------------")
                                         # Käydään objectit läpi
                                         for kohdeluokka in class_obj:
-                                                print(kohdeluokka)
+                                                #print(kohdeluokka)
                                                 # Kopioidaan kohdeluokka objecti ettei se muutu
                                                 obj = copy.deepcopy(kohdeluokka)
                                                 # Kopioidaan vanha result jottei se muutu
@@ -128,11 +138,11 @@ class CsvLinearReference:
                                                         self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], self.paths[next_type][0], self.paths[next_type][1], rows)
                                                 elif next_type and next_type == 'kaistapa':
                                                         self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], None, None, rows)
-                                                # Jos seuraavaa kohdeluokkaa ei ole, lisätään tulos listaan joka palautetaan
+                                                # Jos seuraavaa kohdeluokkaa ei ole, lisätään tulos listaan 
                                                 else:
                                                         rows.append(new_result)
 
-                                        print("-------------------jälkeen-------------------")
+                                        #print("-------------------jälkeen-------------------")
                                 else: 
                                         next_type = self.next_key(prev_result, obj_type)
                                         if next_type and next_type != 'kaistapa': 
@@ -176,14 +186,14 @@ class CsvLinearReference:
                 obj_list = self.kohdeluokat["tieosat"] 
                 #for road in obj_list.values():
                 road = obj_list[1]
-                for obj in road:  
+                for part in road: 
+                        obj     = copy.deepcopy(part) 
                         tie     = obj["tie"]
                         aosa    = obj["osa"]
                         losa    = obj["osa"]
                         e_alku  = obj["enkoodattu-alku"]
                         e_loppu = obj["enkoodattu-loppu"]
                         hal_luokat = obj["hallinnolliset-luokat"]
-
                         # It is possible to have multiple "hallinnollinen-luokka" in one part of road so iterate over those
                         for hal_luokka in hal_luokat:
                                 aet = hal_luokka["alku-m"]
@@ -203,26 +213,26 @@ class CsvLinearReference:
                                         'toiml'         : None,
                                         'kplk'          : None,
                                         'viherlk'       : None,
-                                        'kaistapa'      : None,
+                                        #'kaistapa'      : None,
                                         'pyplk'         : None,
                                         'soratielk'     : None
                                 }
 
                                 # Call recursive function to fill missing classes 
-                                rows = []
-                                self.generate_rows(result, 'vluonne', enkoodattu_alku, enkoodattu_loppu, self.paths['vluonne'][0], self.paths['vluonne'][1], rows)
+                                # Mahdollinen ongelma results ja rows molemmat listoja
+                                #rows = []
+                                self.generate_rows(result, 'vluonne', enkoodattu_alku, enkoodattu_loppu, self.paths['vluonne'][0], self.paths['vluonne'][1], results)
 
                                 # generate_rows is recursive function that might return more than one result so iterate over returned values and add them to list
-                                for r in rows:
-                                        if r:
-                                                results.append(r)
+                                #for r in rows:
+                                #        if r:
+                                #                results.append(r)
                 
                 return results
 
         def write_and_run(self):
-                self.to_roadparts()
+                #self.to_roadparts()
                 writables = self.writable_objects()
-
                 date = datetime.today().strftime('%d-%m-%Y')
                 filename = date + "-tieosat.csv"
                 with open(filename, 'w', newline='') as csvfile:
@@ -238,7 +248,7 @@ class CsvLinearReference:
                                 'toiml',
                                 'kplk',
                                 'viherlk',
-                                'kaistapa',
+                                #'kaistapa',
                                 'pyplk',
                                 'soratielk'
                         ]
@@ -246,11 +256,7 @@ class CsvLinearReference:
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=';')
                         writer.writeheader()
                         for record in writables:
-                                if type(record) == type([]):
-                                        for r in record:
-                                                writer.writerow(record)
-                                else: 
-                                        writer.writerow(record)
+                                writer.writerow(record)
 
                 
         

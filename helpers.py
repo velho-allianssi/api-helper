@@ -227,6 +227,7 @@ def finder_encoded_tieosat(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisu
                         'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
                         }
         return result
+        
 # Etsii tietyn kohdeluokan objectit tietyllä enkoodatulla välillä 
 
 def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
@@ -313,7 +314,7 @@ def group_by_tie_tie(grouped, obj):
         else: 
                 grouped[obj["tie"]] = [obj]
 
-def group_by_tie(obj_list): 
+def group_by_tie(obj_list):
         grouped = {}
         for obj in obj_list:
                 if "tie" in obj: 
@@ -389,7 +390,7 @@ def split_at_parts(tieosat, kohdeluokka):
                                 result.append(cur_kohdeluokka)
                                 i = i + 1 
 
-                        second_last_kohdeluokka = result[-1]
+                        second_last_kohdeluokka = copy.deepcopy(result[-1])
 
                         last_kohdeluokka = copy.deepcopy(kohdeluokka)
                         last_kohdeluokka["alkusijainti"]["osa"]         = loppu["osa"]

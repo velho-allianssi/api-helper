@@ -1,11 +1,10 @@
 from flask import Flask, render_template, session
 import requests, json, ndjson
 from helpers import get_token, kohdeluokka_dict, meta_tiedot
-import csv_functions
-from csv_functions import tieosat_csv_encoded
 from csv_urakat import urakat_csv_encoded
 from csv_homogenisoitu import CsvLinearReference
 from collections import OrderedDict
+from csv_kohdeluokka import csv_write_kohdeluokka
 
 
 # targetit -> kohdeluokaksi
@@ -169,3 +168,9 @@ def tieosat_csv():
     obj = CsvLinearReference()
     obj.write_and_run()
     return "success"
+
+@app.route('/<class_name>/csv')
+def kohdeluokka_csv(class_name):
+    csv_write_kohdeluokka(class_name)
+    #return '', 204
+    return "not implemented"
