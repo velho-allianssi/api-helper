@@ -44,62 +44,85 @@
 
 
 {% block content %}
-    <h3 style="padding-bottom: 1%">{{target}}</h3>
-    {% if "kohdeluokka" in target %}
-        {% if "urakka" in target %}
-            <form action="/csv/tatu/{{target}}" style="padding-bottom: 1%">
-                <input type="submit" value="EXPORT as TATU CSV" class="btn btn-primary">
-            </form>
-            <form action="/csv/full/{{target}}" style="padding-bottom: 1%">
-                <input type="submit" value="EXPORT as Full CSV" class="btn btn-primary">
-            </form>
-        {% endif %}
-        <form action="/download/{{target}}" style="padding-bottom: 1%">
-            <input type="submit" value="Download NDJSON" class="btn btn-secondary">
-        </form>
-
-    {% endif %}
+    <h3>{{target}}</h3>
     {% if path %}
         <p>{{path}}</p>
     {% endif %}
-    <ul class="list-group" style="list-style: none;">
-    {% for key, value in data.items() %}
-        <li style="padding-bottom: 1%">
-            <button class="dropdown-btn{{ key }} dropdown-button" style="align-content: center">{{key}}</button>
-            <div class="dropdown-container dc-box" style="display:none">
-                {% if value is mapping %}
-                    {{ create_table(value, 1)}}
-                {% elif value is iterable and value is not string %}
-                    <ul class="list-group" style="list-style: none;">
-                        {% for value2 in value %}
-                            <li class="list-group-item list-group-item-action">
-                                {{value2}}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="list-group-item list-group-item-action">
-                        {{value}}
-                    </p>
-                {% endif %}
-            </div>
-        </li>
-        <script>
-            var dropdown = document.getElementsByClassName("dropdown-btn{{key}}");
-            var i;
-  
-            for (i = 0; i < dropdown.length; i++) {
-              dropdown[i].addEventListener("click", function() {
-                this.classList.toggle("active");
-                var dropdownContent = this.nextElementSibling;
-                if (dropdownContent.style.display === "block") {
-                  dropdownContent.style.display = "none";
-                } else {
-                  dropdownContent.style.display = "block";
+    {% if "kohdeluokka" in target %}
+        <h4>Lähetä:</h4>
+        <div class="input-group">
+            <form action="{{ url_for('curl_put')}}" method="POST">
+                <input class="form-control" type="file" id="formFile" aria-label="Upload" id="inputGroupFile" aria-describedby="inputGroupFileAddon">
+                <input type="hidden" id="target" name="target" value={{target}}>
+                <button type="submit" class="btn btn-primary mb-3" style="margin-top: 1%;" id="inputGroupFileAddon">Lähetä</button>
+            </form>
+        </div>
+        <h4>Lataa:</h4>
+        <div>
+            <form action="/{{target}}/csv" style="padding-bottom: 1%">
+                <input type="submit" value="EXPORT as CSV" class="btn btn-primary">
+            </form>
+            <form action="/download/{{target}}" style="padding-bottom: 1%">
+                <input type="submit" value="Download NDJSON" class="btn btn-secondary">
+            </form>
+        </div>
+        <h4>Hae:</h4>
+        <div class="form-floating">
+            {% set splits = target.split("_") %}
+            <form action="/{{ splits[1] }}/{{ target }}"  method="POST" style="padding-bottom: 1%">
+                <label for="road">Tien numero:</label> 
+                <input type="number"  id="road" name="road" min="1">
+                <label for="road">Alun osa:</label> 
+                <input type="number"  id="aosa" name="aosa" min="1" onchange="document.getElementById('losa').min=this.value;"/>
+                <label for="road">Lopun osa:</label> 
+                <input type="number"  id="losa" name="losa" min="document.getElementById('aosa').value">
+                <button type="submit" class="btn btn-primary mb-3" style="margin-top: 1%;">Hae</button>
+            </form>
+        </div>
+
+    {% endif %}
+    {% if data %}
+        <ul class="list-group" style="list-style: none;">
+        {% for key, value in data.items() %}
+            <li style="padding-bottom: 1%">
+                <button class="dropdown-btn{{ key }} dropdown-button" style="align-content: center">{{key}}</button>
+                <div class="dropdown-container dc-box" style="display:none">
+                    {% if value is mapping %}
+                        {{ create_table(value, 1)}}
+                    {% elif value is iterable and value is not string %}
+                        <ul class="list-group" style="list-style: none;">
+                            {% for value2 in value %}
+                                <li class="list-group-item list-group-item-action">
+                                    {{value2}}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="list-group-item list-group-item-action">
+                            {{value}}
+                        </p>
+                    {% endif %}
+                </div>
+            </li>
+            <script>
+                var dropdown = document.getElementsByClassName("dropdown-btn{{key}}");
+                var i;
+    
+                for (i = 0; i < dropdown.length; i++) {
+                dropdown[i].addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    var dropdownContent = this.nextElementSibling;
+                    if (dropdownContent.style.display === "block") {
+                    dropdownContent.style.display = "none";
+                    } else {
+                    dropdownContent.style.display = "block";
+                    }
+                });
                 }
-              });
-            }
-          </script>
-    {% endfor %}
-    </ul>
+            </script>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>Ei tuloksia</p>
+    {% endif %}
 {% endblock %}

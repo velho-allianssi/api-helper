@@ -43,10 +43,7 @@
 {% endmacro %}
 
 {% block content %}
-    <h3 style="padding-bottom: 1%">{{target}}</h3>
-    <form action="/check_status/{{target}}" style="padding-bottom: 1%">
-        <input type="submit" value="Check status" class="btn btn-primary">
-    </form>
+    <h3 style="padding-bottom: 1%">Lähetykset:</h3>
     <ul class="list-group" style="list-style: none;">
     {% for key, value in data.items() %}
         <li style="padding-bottom: 1%">

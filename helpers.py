@@ -105,7 +105,6 @@ def meta_tiedot(class_name):
 # Tarkistaa ovatko ominaisuus ja tarkenne määriteltyjä, sekä kuuluvatko ne dict objectiin
 # Palauttaa joko koko objectin, obj[ominaisuuden] tai obj[ominaisuus][tarkenne]
 # split metodia käytetään siistimiseen, esim verkon-materiaali/mt01 otetaan vain mt01
-
 def check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne):
         if ominaisuus and ominaisuus in obj:
                 if tarkenne:
@@ -132,7 +131,6 @@ def check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne):
 # Enkoodaus 300008782 = tie 3 etaisyys 8782
 # loppu alun jälkeen, loppu ennen alkua
 # alku inklusiivinen loppu ekslusiivinen
-
 def encode(tie, etaisyys):
         return 100000000 * tie + etaisyys
         
@@ -142,13 +140,43 @@ def decode_to_length(enkoodattu, tie):
 
 # loppu alun jälkeen, loppu ennen alkua
 # alku inklusiivinen loppu ekslusiivinen
-
 def encoded_in_range(enkoodattu_alku, enkoodattu_loppu, vertailtava_alku, vertailtava_loppu):
         if enkoodattu_alku <= vertailtava_loppu and enkoodattu_loppu > vertailtava_alku:
                 return True
         else: 
                 return False
 
+
+# Vertailee kahden kohdeluokan objectin enkoodattuja sijainteja
+# Jos vertailtava objecti kattaa alkuperäisen objectin sekä alkupisteen että loppu pisteen palautetaan 0 
+# Esim: |-------| tai --|----| tai |-----|--- tai ---|------|--
+# Jos vertailtava objecti alkaa myöhemmin kuin alkuperäinen objecti mutta loppuu alkuperäisen objectin jälkeen palautetaan 1
+# Esim: |...-----| tai |..----|---
+# Jos vertailtava objecti loppuu ennen alkuperäistä objectiä mutta alkaa ennen tai samaanaikaan kuin alkuperäinen objecti palautetaan 2
+# Esim: |------....| tai ---|---....|
+# Jos vertailtava objectin alku ja loppu ovat alkuperäisen objectin sisällä palautetaan 3
+# Esim: |..-----....|
+def encoded_split_cases(enkoodattu_alku, enkoodattu_loppu, vertailtava_alku, vertailtava_loppu):
+        if vertailtava_alku <= enkoodattu_alku:
+                if vertailtava_loppu < enkoodattu_alku:
+                        return 4
+                else: 
+                        if vertailtava_loppu >= enkoodattu_loppu:
+                                return 0 
+                        else: 
+                                return 2
+        elif vertailtava_alku > enkoodattu_alku:
+                if vertailtava_alku > enkoodattu_loppu:
+                        return 4
+                else: 
+                        if vertailtava_loppu >= enkoodattu_loppu:
+                                return 1
+                        else: 
+                                return 3
+        # Varmuuden vuoksi palautetaan jokin numero
+        else: 
+                return 4
+        
 
 # Apufunktio finder_encoded funktiolle
 # Kutsutaan jos käsiteltävä objecti sisältää "sijainnit"
@@ -191,12 +219,46 @@ def finder_encoded_sijannit(obj, results, tie, enkoodattu_alku, enkoodattu_loppu
 # Apufunktio finder_encoded funktiolle
 # Kutsutaan jos käsiteltävä objecti sisältää "alkusijainti" tai "loppusijainti"
 
-def finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
-        result = None
+def finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, prev_result):
         obj_alku  = obj["alkusijainti"]["enkoodattu"]
         obj_loppu = obj["loppusijainti"]["enkoodattu"]
-        if encoded_in_range(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu):
-                result = {
+        rajat = encoded_split_cases(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu)
+        
+        if rajat == 0: 
+                return {
+                        'tie': tie, 
+                        'aosa': prev_result['aosa'],
+                        'aet': prev_result['aet'], 
+                        'enkoodattu_alku': enkoodattu_alku, 
+                        'losa': prev_result['aosa'], 
+                        'let': prev_result['let'], 
+                        'enkoodattu_loppu': enkoodattu_loppu, 
+                        'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                        }
+        elif rajat == 1:
+                return {
+                        'tie': tie, 
+                        'aosa': obj["alkusijainti"]['osa'], 
+                        'aet': obj['alkusijainti']['etaisyys'], 
+                        'enkoodattu_alku': obj_alku, 
+                        'losa': prev_result['aosa'], 
+                        'let': prev_result['let'], 
+                        'enkoodattu_loppu': enkoodattu_loppu, 
+                        'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                }
+        elif rajat == 2:
+                return {
+                        'tie': tie, 
+                        'aosa': prev_result['aosa'],
+                        'aet': prev_result['aet'], 
+                        'enkoodattu_alku': enkoodattu_alku, 
+                        'losa': obj["loppusijainti"]['osa'], 
+                        'let': obj['loppusijainti']['etaisyys'], 
+                        'enkoodattu_loppu': obj_loppu, 
+                        'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
+                }
+        elif rajat == 3: 
+                return {
                         'tie': tie, 
                         'aosa': obj["alkusijainti"]['osa'], 
                         'aet': obj['alkusijainti']['etaisyys'], 
@@ -205,8 +267,10 @@ def finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_
                         'let': obj['loppusijainti']['etaisyys'], 
                         'enkoodattu_loppu': obj_loppu, 
                         'value': check_ominaisuus_tarkenne_in_obj(obj, ominaisuus, tarkenne)
-                        }
-        return result
+                }
+        else: 
+                return None
+
 
 # Apufunktio finder_encoded funktiolle
 # Kutsutaan jos käsiteltävä objecti sisältää "tie", eli käytännössä vain sijainti/tieosa kohdeluokalle
@@ -230,23 +294,30 @@ def finder_encoded_tieosat(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisu
         
 # Etsii tietyn kohdeluokan objectit tietyllä enkoodatulla välillä 
 
-def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne):
-    results = []
-    if not obj_list: 
-            return None
-    for obj in obj_list:
-            if "sijainnit" in obj:
-                    results = finder_encoded_sijannit(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
-            elif "alkusijainti" in obj and "loppusijainti" in obj:
-                    find = finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
-                    if find: 
-                            results.append(find)
-            elif "tie" in obj: 
-                    find = finder_encoded_tieosat(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
-                    if find: 
-                            results.append(find)
+def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, prev_result):
+        results = []
+        if not obj_list: 
+                return None
+  
+        for obj in obj_list:
+                        if "sijainnit" in obj:
+                                results = finder_encoded_sijannit(obj, results, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
+                        elif "alkusijainti" in obj and "loppusijainti" in obj:
+                                find = finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, prev_result)
 
-    return results
+                                if find:
+                                        duplicate = False
+                                        for x in results: 
+                                                if x == find:
+                                                        duplicate == True
+                                        if duplicate == False:
+                                                results.append(find)
+                        elif "tie" in obj: 
+                                find = finder_encoded_tieosat(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne)
+                                if find: 
+                                        results.append(find)
+
+        return results
                         
 
 # Etsii listasta objectin, joka täyttää vaatimukset ja palauttaa joko obj[ominaisuus] tai obj[ominaisuus][tarkenne]
@@ -306,41 +377,39 @@ def finder(obj_list, tie, aosa, losa, ominaisuus, tarkenne):
 # Ryhmittelee kohdeluokan objectit teiden perusteella
 # Palauttaa dictionaryn jolla voi hakea dict_name[__tien numero__] objectit tietyllä tiellä
 # Pilko kolmeen functioon
-def group_by_tie_tie(grouped, obj):
-        if obj["tie"] in grouped: 
-                cur = grouped[obj["tie"]]
-                cur.append(obj)
-                grouped[obj["tie"]] = cur
-        else: 
-                grouped[obj["tie"]] = [obj]
 
 def group_by_tie(obj_list):
         grouped = {}
-        for obj in obj_list:
-                if "tie" in obj: 
-                        if obj["tie"] in grouped: 
-                                cur = grouped[obj["tie"]]
-                                cur.append(obj)
-                                grouped[obj["tie"]] = cur
-                        else: 
-                                grouped[obj["tie"]] = [obj]
-                elif "alkusijainti" in obj: 
-                        alkusijainti = obj["alkusijainti"]
-                        if alkusijainti["tie"] in grouped: 
-                                cur = grouped[alkusijainti["tie"]]
-                                cur.append(obj)
-                                grouped[alkusijainti["tie"]] = cur
-                        else: 
-                                grouped[alkusijainti["tie"]] = [obj]
-                else: 
-                        for sijainti in obj["sijainnit"]:
-                                alkusijainti = sijainti["alkusijainti"]
+        try:
+                for obj in obj_list:
+                        if "tie" in obj: 
+                                if obj["tie"] in grouped: 
+                                        cur = grouped[obj["tie"]]
+                                        cur.append(obj)
+                                        grouped[obj["tie"]] = cur
+                                else: 
+                                        grouped[obj["tie"]] = [obj]
+                        elif "alkusijainti" in obj: 
+                                alkusijainti = obj["alkusijainti"]
                                 if alkusijainti["tie"] in grouped: 
                                         cur = grouped[alkusijainti["tie"]]
                                         cur.append(obj)
                                         grouped[alkusijainti["tie"]] = cur
                                 else: 
                                         grouped[alkusijainti["tie"]] = [obj]
+                        else: 
+                                for sijainti in obj["sijainnit"]:
+                                        alkusijainti = sijainti["alkusijainti"]
+                                        if alkusijainti["tie"] in grouped: 
+                                                cur = grouped[alkusijainti["tie"]]
+                                                cur.append(obj)
+                                                grouped[alkusijainti["tie"]] = cur
+                                        else: 
+                                                grouped[alkusijainti["tie"]] = [obj]
+        except Exception as e: 
+                print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
+
+        
         return grouped 
 
 # Jos kohdeluokan sijainti ylittää tieosan, pilkotaan se osiin
@@ -368,26 +437,27 @@ def split_at_parts(tieosat, kohdeluokka):
 
                         while i < loppu["osa"]:
                                 tieosa_cur = finder(tieosat, alku["tie"], i, i, None, None)
-                                cur_kohdeluokka = copy.deepcopy(kohdeluokka)
-                                alku = {
-                                        'osa': tieosa_cur["osa"],
-                                        'tie': tieosa_cur["tie"],
-                                        'etaisyys': 0,
-                                        'etaisyys-tien-alusta': tieosa_cur["alun-etaisyys-tien-alusta"],
-                                        'enkoodattu': tieosa_cur["enkoodattu-alku"],
-                                        'ajorata': alku["ajorata"]
-                                }
-                                loppu = {
-                                        'osa': tieosa_cur["osa"],
-                                        'tie': tieosa_cur["tie"],
-                                        'etaisyys': tieosa_cur["pituus"],
-                                        'etaisyys-tien-alusta': tieosa_cur["lopun-etaisyys-tien-alusta"],
-                                        'enkoodattu': tieosa_cur["enkoodattu-loppu"],
-                                        'ajorata': alku["ajorata"]
-                                }
-                                cur_kohdeluokka["alkusijainti"] = alku
-                                cur_kohdeluokka["loppusijainti"] = loppu
-                                result.append(cur_kohdeluokka)
+                                if tieosa_cur:
+                                        cur_kohdeluokka = copy.deepcopy(kohdeluokka)
+                                        alku = {
+                                                'osa': tieosa_cur["osa"],
+                                                'tie': tieosa_cur["tie"],
+                                                'etaisyys': 0,
+                                                'etaisyys-tien-alusta': tieosa_cur["alun-etaisyys-tien-alusta"],
+                                                'enkoodattu': tieosa_cur["enkoodattu-alku"],
+                                                'ajorata': alku["ajorata"]
+                                        }
+                                        loppu = {
+                                                'osa': tieosa_cur["osa"],
+                                                'tie': tieosa_cur["tie"],
+                                                'etaisyys': tieosa_cur["pituus"],
+                                                'etaisyys-tien-alusta': tieosa_cur["lopun-etaisyys-tien-alusta"],
+                                                'enkoodattu': tieosa_cur["enkoodattu-loppu"],
+                                                'ajorata': alku["ajorata"]
+                                        }
+                                        cur_kohdeluokka["alkusijainti"] = alku
+                                        cur_kohdeluokka["loppusijainti"] = loppu
+                                        result.append(cur_kohdeluokka)
                                 i = i + 1 
 
                         second_last_kohdeluokka = copy.deepcopy(result[-1])
