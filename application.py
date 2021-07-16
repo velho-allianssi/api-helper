@@ -1,7 +1,7 @@
 from flask import Flask, render_template, session, request
 from flask.helpers import send_file
 import requests, json, ndjson
-from helpers import get_token, group_by_tie, kohdeluokka_dict, meta_tiedot, api_call_data_kohdeluokka, finder
+from helpers import get_token, group_by_tie, kohdeluokka_dict, meta_tiedot, api_call_data_kohdeluokka, finder, grouped_by_tie, split_at_parts
 from csv_urakat import urakat_csv_encoded
 from csv_homogenisoitu import CsvLinearReference
 from collections import OrderedDict
@@ -68,20 +68,28 @@ def get_specs(class_name):
 @app.route('/<class_name>/<target>', methods = ['GET', 'POST'])
 def get_class(class_name, target):
     parts = target.split("_")
+    filters = {}
     if parts[0] == "kohdeluokka": 
         content, path = kohdeluokka_dict(target)
         if request.method == 'POST':
             tie = request.form['road']
             grouped = group_by_tie(content)
-            content = grouped[int(tie)]
-            aosa = request.form['aosa']
-            losa = request.form['losa']
+            if int(tie) in grouped: 
+                content = grouped[int(tie)]
+                aosa = request.form['aosa']
+                losa = request.form['losa']
 
-            if aosa and losa:
-                aosa = int(aosa)
-                losa = int(losa)
-                finds = tieosa_haku(content, aosa, losa)
-                content = finds
+                if aosa and losa:
+                    aosa = int(aosa)
+                    losa = int(losa)
+                    finds = tieosa_haku(content, aosa, losa)
+                    content = finds
+
+                    filters = {
+                        'tie'  : tie,
+                        'aosa' : aosa,
+                        'losa' : losa
+                    }
 
         if type(content) is str: 
             return content
@@ -89,14 +97,14 @@ def get_class(class_name, target):
             as_dict = {}
             for d in content:
                 as_dict[d["oid"]] = d
-            return render_template('target.html', data=as_dict, target=target, path=path)
+            return render_template('target.html', data=as_dict, target=target, path=path, filters=filters)
 
     else:
         data = meta_tiedot(class_name)
         try: 
-            return render_template('target.html', data=data[target], target=target)
+            return render_template('target.html', data=data[target], target=target, filters=filters)
         except: 
-            return render_template('target.html', data={"Error": "No data with this keyword"}, target=target)
+            return render_template('target.html', data={"Error": "No data with this keyword"}, target=target, filters=filters)
 
 # Etsii kohdeluokan objectit joiden osat ovat tietyllä välillä
 # Kutsuttaessa oletetaan että tieosat ovat kohdeluokan objectit tietyllä tiellä (yleensä siis group_by_tie(__jokin tie__))
@@ -189,7 +197,7 @@ def curl_put():
         #return render_template("upload_check.html", data=requests.get(status_url, headers=headers).json(), lahetystunniste=response_json["lahetystunniste"])
 
         lahetykset()
-        
+
 @app.route('/csv/tieosat')
 def tieosat_csv():
     obj = CsvLinearReference()
@@ -200,4 +208,18 @@ def tieosat_csv():
 def kohdeluokka_csv(class_name):
     file = csv_write_kohdeluokka(class_name)
     return send_file(file, as_attachment=True)
+
+@app.route('/nappi')
+def nappi():
+    auth_token = get_token()
+    kohdeluokka = grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_viherhoitoluokka", auth_token)
+    tieosat = grouped_by_tie("kohdeluokka_sijainti_tieosa", auth_token)
+    tieosat = tieosat[1]
+    kohdeluokka = kohdeluokka[1]
+    result = []
+    for x in kohdeluokka:
+        result = split_at_parts(tieosat, x)
+        if result:
+            return render_template('testi.html', data=result)
+    return render_template('testi.html', data=result)
 

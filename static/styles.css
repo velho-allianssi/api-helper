@@ -1,0 +1,41 @@
+:root {
+    --1: #1B9CFC;
+    --2: #27ae60;
+    --3: #F97F51;
+    --4: #57606f; 
+    --5: #c44569;
+    --6: #cc8e35;
+    --7: #574b90;
+    --8: #2ed573;
+  }
+.dropdown-button {
+    width: 100%;
+    border: 1px solid #e0dada;
+    border-radius: 10px 10px 0px 0px;
+    text-align:left;
+    padding: 5px;
+}
+.dc-box {
+    width: 100%;
+    border: 1px solid #e0dada;
+    border-radius: 0px 0px 10px 10px;
+    border-top: none;
+}
+.pd-3 {
+margin-left: 2%;
+width: 97%;
+}
+
+.ml-10 {
+    margin-left: 10%
+}
+
+.pdl-0 {
+    padding-left: 0;
+}
+
+#drop_zone {
+    border: 5px solid blue;
+    width:  200px;
+    height: 100px;
+  }

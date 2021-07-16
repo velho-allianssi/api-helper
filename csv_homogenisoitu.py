@@ -125,45 +125,54 @@ class CsvLinearReference:
                                 cur = self.kohdeluokat[obj_type]
                                 # Etsitään kohdeluokan objecti listasta objectit jotka ovat tietyllä enkoodatulla välillä
                                 #print("here")
-                                class_obj = []
+                                found_objects_on_span = []
                                 cur_result = copy.deepcopy(prev_result)
-                                class_obj = finder_encoded(cur.get(prev_result['tie']) or [], prev_result['tie'], enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, cur_result)
+                                #print("Alkuperäinen: Osa: " + str(cur_result['aosa']) + " Aet: " + str(cur_result['aet']) + " Let: " + str(cur_result['let']) + " Enka: " + str(enkoodattu_alku) + " Enkl: " + str(enkoodattu_loppu))
+                                found_objects_on_span = finder_encoded(cur.get(prev_result['tie']) or [], prev_result['tie'], enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, cur_result)
                                 # Jos objectejä löytyy
-                                if class_obj:
+                                if found_objects_on_span:
      
-  
+
                                         #print("-------------------ennen------------------")
                                         # Käydään objectit läpi
-                                        for kohdeluokka in class_obj:
+                                        for kohdeluokka in found_objects_on_span:
                                                 #print(kohdeluokka)
-                                                # Kopioidaan kohdeluokka objecti ettei se muutu
-                                                obj = copy.deepcopy(kohdeluokka)
-                                                # Kopioidaan vanha result jottei se muutu
-                                                new_result = copy.deepcopy(prev_result)
-                                                # Täytetään kohdeluokan objectin tiedot uuteen resulttiin
-                                                new_result['aet'] = obj['aet']
-                                                new_result['let'] = obj['let']
-                                                new_result['pituus'] = obj['enkoodattu_loppu'] - obj['enkoodattu_alku']
-                                                new_result[obj_type] = obj['value']
-                                                # Haetaan seuraavan kohdeluokan avain
-                                                next_type = self.next_key(prev_result, obj_type)
-                                                # Kutsutaan uudestaan generate_rows funktiota, uudella resultilla sekä uudella kohdeluokalla
-                                                if next_type and next_type != 'kaistapa': 
-                                                        self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], self.paths[next_type][0], self.paths[next_type][1], rows)
-                                                elif next_type and next_type == 'kaistapa':
-                                                        self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], None, None, rows)
-                                                # Jos seuraavaa kohdeluokkaa ei ole, lisätään tulos listaan 
-                                                else:
-                                                        rows.append(new_result)
+                                                if kohdeluokka["enkoodattu_alku"] != kohdeluokka["enkoodattu_loppu"]:
+                                                        # Kopioidaan kohdeluokka objecti ettei se muutu
+                                                        obj = copy.deepcopy(kohdeluokka)
+                                                        # Kopioidaan vanha result jottei se muutu
+                                                        new_result = copy.deepcopy(prev_result)
+                                                        # Täytetään kohdeluokan objectin tiedot uuteen resulttiin
+                                                        new_result['aet'] = obj['aet']
+                                                        new_result['let'] = obj['let']
+                                                        new_result['pituus'] = obj['enkoodattu_loppu'] - obj['enkoodattu_alku']
+                                                        new_result[obj_type] = obj['value']
+                                                        # Haetaan seuraavan kohdeluokan avain
+                                                        next_type = copy.deepcopy(self.next_key(prev_result, obj_type))
+                                                        #print(next_type)
+                                                        #time.sleep(1)
+                                                        # Kutsutaan uudestaan generate_rows funktiota, uudella resultilla sekä uudella kohdeluokalla
+                                                        if next_type and next_type != 'kaistapa': 
+                                                                self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], self.paths[next_type][0], self.paths[next_type][1], rows)
+                                                        elif next_type and next_type == 'kaistapa':
+                                                                self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], None, None, rows)
+                                                        # Jos seuraavaa kohdeluokkaa ei ole, lisätään tulos listaan 
+                                                        else:
+                                                                print("------------------------tyhjä-------------------------------")
+                                                                rows.append(new_result)
 
                                         #print("-------------------jälkeen-------------------")
                                 else: 
                                         next_type = self.next_key(prev_result, obj_type)
+                                        #print("Alempana: ")
+                                        #print(next_type)
                                         if next_type and next_type != 'kaistapa': 
                                                 self.generate_rows(prev_result, next_type, enkoodattu_alku, enkoodattu_loppu, self.paths[next_type][0], self.paths[next_type][1], rows)
                                         elif next_type and next_type == 'kaistapa':
                                                 self.generate_rows(prev_result, next_type, enkoodattu_alku, enkoodattu_loppu, None, None, rows)
-                                        else:
+                                        else:   
+
+                                                #print("here")
                                                 rows.append(prev_result)
                         
                         else: 
@@ -190,12 +199,6 @@ class CsvLinearReference:
                                                 rows.append(prev_result)
                 except Exception as e: 
                         print('In CSV Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
-                '''
-                if not result_list: 
-                        result_list.append(prev_result)
-
-                return result_list        
-                '''
 
 
         def writable_objects(self):
@@ -203,44 +206,44 @@ class CsvLinearReference:
                 results = []
 
                 # Use "tieosat" class as starting class
-                obj_list = self.kohdeluokat["tieosat"] 
+                all_roads = self.kohdeluokat["tieosat"] 
                 #for road in obj_list.values():
-                road = obj_list[1]
-                for part in road: 
-                        obj     = copy.deepcopy(part) 
-                        tie     = obj["tie"]
-                        aosa    = obj["osa"]
-                        losa    = obj["osa"]
-                        e_alku  = obj["enkoodattu-alku"]
-                        e_loppu = obj["enkoodattu-loppu"]
-                        hal_luokat = obj["hallinnolliset-luokat"]
-                        # It is possible to have multiple "hallinnollinen-luokka" in one part of road so iterate over those
-                        for hal_luokka in hal_luokat:
-                                aet = hal_luokka["alku-m"]
-                                let = hal_luokka["loppu-m"]
-                                pituus  = let-aet
-                                enkoodattu_alku = e_alku + aet
-                                enkoodattu_loppu = e_alku + let
-                                result = {
-                                        'tie'           : tie,
-                                        'aosa'          : aosa,
-                                        'aet'           : aet,
-                                        'losa'          : losa,
-                                        'let'           : let,
-                                        'pituus'        : pituus,
-                                        'tiety'         : hal_luokka["hallinnollinen-luokka"].split('/')[1],
-                                        'vluonne'       : None,
-                                        'toiml'         : None,
-                                        'kplk'          : None,
-                                        'viherlk'       : None,
-                                        'kaistapa'      : None,
-                                        'pyplk'         : None,
-                                        'soratielk'     : None
-                                }
+                for number, road in all_roads.items():
+                        for part in road: 
+                                obj     = copy.deepcopy(part) 
+                                tie     = obj["tie"]
+                                aosa    = obj["osa"]
+                                losa    = obj["osa"]
+                                e_alku  = obj["enkoodattu-alku"]
 
-                                # Call recursive function to fill missing classes 
-                                self.generate_rows(copy.deepcopy(result), 'vluonne', enkoodattu_alku, enkoodattu_loppu, self.paths['vluonne'][0], self.paths['vluonne'][1], results)
-                
+                                hal_luokat = obj["hallinnolliset-luokat"]
+                                # It is possible to have multiple "hallinnollinen-luokka" in one part of road so iterate over those
+                                for hal_luokka in hal_luokat:
+                                        aet = hal_luokka["alku-m"]
+                                        let = hal_luokka["loppu-m"]
+                                        pituus  = let-aet
+                                        enkoodattu_alku = e_alku + aet
+                                        enkoodattu_loppu = e_alku + let
+                                        result = {
+                                                'tie'           : tie,
+                                                'aosa'          : aosa,
+                                                'aet'           : aet,
+                                                'losa'          : losa,
+                                                'let'           : let,
+                                                'pituus'        : pituus,
+                                                'tiety'         : hal_luokka["hallinnollinen-luokka"].split('/')[1],
+                                                'vluonne'       : None,
+                                                'toiml'         : None,
+                                                'kplk'          : None,
+                                                'viherlk'       : None,
+                                                'kaistapa'      : None,
+                                                'pyplk'         : None,
+                                                'soratielk'     : None
+                                        }
+
+                                        # Call recursive function to fill missing classes 
+                                        self.generate_rows(copy.deepcopy(result), 'vluonne', enkoodattu_alku, enkoodattu_loppu, self.paths['vluonne'][0], self.paths['vluonne'][1], results)
+                        
                 return results
 
         def write_and_run(self):

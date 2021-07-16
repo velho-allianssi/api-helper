@@ -78,6 +78,12 @@
                 <input type="number"  id="losa" name="losa" min="document.getElementById('aosa').value">
                 <button type="submit" class="btn btn-primary mb-3" style="margin-top: 1%;">Hae</button>
             </form>
+            {% if filters %}
+                <p>Nykyinen haku:</p>
+                <p>Tie: {{filters['tie']}}</p>
+                <p>Alku osa: {{filters['aosa']}} </p>
+                <p>Loppu osa: {{filters['losa']}}</p>
+            {% endif %}
         </div>
 
     {% endif %}
