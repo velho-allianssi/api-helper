@@ -16,5 +16,5 @@ python-oauth2==1.1.1
 pytz==2021.1
 requests==2.25.1
 six==1.16.0
-urllib3==1.26.4
+urllib3==1.26.5
 Werkzeug==2.0.0
