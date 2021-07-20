@@ -39,3 +39,10 @@ width: 97%;
     width:  200px;
     height: 100px;
   }
+
+.card_box {
+    border: 2px solid rgb(231, 226, 226);
+    border-radius: 10px;
+    margin-left: 1%;
+    padding: 2%;
+}

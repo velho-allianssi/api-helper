@@ -4,7 +4,8 @@ from datetime import datetime
 from helpers import grouped_by_tie, get_token,  finder_encoded, split_at_parts
 import sys
 import copy
-
+import pandas as pd
+from iteration_utilities import unique_everseen
 # Muuttujien nimet selkeämmäksi esim enkoodattu_alku => enkoodattu_alku
 
 class CsvLinearReference:
@@ -246,6 +247,67 @@ class CsvLinearReference:
                         
                 return results
 
+        def combine_two_rows(self,row1, row2):
+                row1 = copy.deepcopy(row1)
+                row2 = copy.deepcopy(row2)
+                keys = [
+                        'tiety',
+                        'vluonne',
+                        'toiml',
+                        'kplk',
+                        'viherlk',
+                        'kaistapa',
+                        'pyplk',
+                        'soratielk'
+                ]
+                if row1['tie'] == row2['tie'] and row1['aosa'] == row2['aosa']:
+                        '''
+                        if row1['aet'] == row2['aet']:
+                                if row1['let'] < row2['let']:
+                                        for key in keys:
+                                                if row1[key] != row2[key]:
+                                                        return None
+                                        new_row = row1
+                                        new_row['let'] = row2['let']
+                                else: 
+                                        for key in keys:
+                                                if row1[key] != row2[key]:
+                                                        return None
+                                        new_row = row1
+                                        new_row['let'] = row1['let']
+                                return new_row
+                        '''
+                        if row1['let'] <= row2['let']:
+                                for key in keys:
+                                        if row1[key] != row2[key]:
+                                                return None
+                                new_row = row1
+                                new_row['let'] = row2['let']
+                                new_row['pituus'] = new_row['let'] - new_row['aet']
+                                return new_row
+                        else: 
+                                return None
+
+                return None
+
+        def combine_rows_loop(self,rows):
+                new_rows = []
+                i = 1 
+                new_rows.append(rows[0])
+                while i < len(rows):
+                        row1 = new_rows[-1]
+                        row2 = rows[i]
+                        combined = self.combine_two_rows(row1,row2)
+                        if combined:
+                                new_rows.append(combined)
+                        else: 
+                                new_rows.append(row2)
+
+                        i += 1
+                return new_rows
+                        
+
+
         def write_and_run(self):
                 self.to_roadparts()
                 writables = self.writable_objects()
@@ -268,10 +330,13 @@ class CsvLinearReference:
                                 'pyplk',
                                 'soratielk'
                         ]
-
+                        
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=';')
                         writer.writeheader()
-                        for record in writables:
+                        without_duplicates = pd.DataFrame(writables).drop_duplicates().to_dict('records')
+                        sorted_writables = sorted(without_duplicates, key=lambda k: (k['tie'], k['aosa'], k['aet']))
+                        combined_writables = self.combine_rows_loop(sorted_writables)
+                        for record in combined_writables:
                                 writer.writerow(record)
 
                 return filename

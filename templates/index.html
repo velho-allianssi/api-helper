@@ -1,7 +1,57 @@
 {% extends "base.html" %}
 {% block content %}
-    <h3><a href="/meta">Meta</a></h3>
-    <form action="/csv/tieosat" style="padding-bottom: 1%">
-        <input type="submit" value="Tieosat CSV" class="btn btn-primary">
-    </form>
+<div class="container" style="padding-left: 0px; margin-left: 0px; margin-right:0px">
+    <div class="row">
+        <div class="col-6 card_box">
+            <h2>Info</h2>
+            <p>
+                Velhon api:sta tietoja hakeva sivu. Hyödyntää lataus- sekä metatietopalvelua eri kohdeluokkien tietojen hakemiseen.
+                Kohdeluokkien tietoja voi selata sellaisenaan, tai ladata joko ndjson tai csv muodoissa. 
+                <br><br>
+                Card titles are used by adding .card-title to a tag. In the same way, links are added and placed 
+                next to each other by adding .card-link to an tag.
+                <br><br>
+                Subtitles are used by adding a .card-subtitle to a tag. If the .card-title and the .card-subtitle 
+                items are placed in a .card-body item, the card title and subtitle are aligned nicely.    
+            </p>
+        </div>
+        <div class="col card_box">
+            <h2>Linkit</h2>
+            <div class="list-group">
+                <a href="/meta" class="list-group-item list-group-item-action" aria-current="true">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">Meta</h5>
+                    </div>
+                    <p class="mb-1">Sisältää nimiavaruudet</p>
+                </a>
+                <a href="/lahetykset" class="list-group-item list-group-item-action" aria-current="true">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">Lähetykset</h5>
+                    </div>
+                    <p class="mb-1">Tällä hetkellä lähetettävät tiedostot</p>
+                </a>
+                <a href="https://velho.vayla.fi/" class="list-group-item list-group-item-action" aria-current="true">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">Velho</h5>
+                    </div>
+                    <p>Väylätietojen karttapalvelu</p>
+                </a>
+            </div>
+        </div>
+        <div class="col card_box">
+            <h2>CSV</h2>
+            <a href="/csv/tieosat" class="list-group-item list-group-item-action" aria-current="true">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">Tieosat</h5>
+                </div>
+                <p class="mb-1">Yhdistelee kohdeluokkien tietoja tieosuuksilla</p>
+            </a>
+            <!--
+            <form action="/csv/tieosat" style="padding-bottom: 1%">
+                <input type="submit" value="Tieosat CSV" class="btn btn-primary">
+            </form>
+        -->
+        </div>
+    </div>
+</div>
 {% endblock %}
