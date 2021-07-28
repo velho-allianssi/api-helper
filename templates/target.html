@@ -44,10 +44,25 @@
 
 
 {% block content %}
-    <h3>{{target}}</h3>
-    {% if path %}
-        <p>{{path}}</p>
-    {% endif %}
+    <div class="row">
+        <div class="col">
+            <h3>{{target}}</h3>
+            {% if path %}
+                <p>{{path}}</p>
+            {% endif %}
+        </div>
+        <div class="col col-md-auto">
+            <form action="/{{target}}/csv" style="padding-bottom: 1%">
+                <input type="submit" value="EXPORT as CSV" class="btn btn-primary">
+            </form>
+        </div>
+
+        <div class="col col-lg-2">
+            <form action="/download/{{target}}" style="padding-bottom: 1%">
+                <input type="submit" value="Download NDJSON" class="btn btn-secondary">
+            </form>
+        </div>
+    </div>
     {% if "kohdeluokka" in target %}
         <h4>Lähetä:</h4>
         <div class="input-group">

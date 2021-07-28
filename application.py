@@ -14,9 +14,13 @@ app = Flask(__name__)
 
 dataset = [ ]
 
+@app.route('/alternative')
+def alt(): 
+    return render_template('index_alt.html')
+
 @app.route('/')
 def index():
-    return render_template('index.html', data="API Helper")
+    return render_template('index.html')
 
 
 # Hakee kohdeluokkien nimet metatietopalvelusta

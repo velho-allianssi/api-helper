@@ -6,15 +6,7 @@ from datetime import datetime
 import sys
 import copy
 
-# Tee oma funktio parts = target.split("_") 
-# url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json" 
-# auth = 'Bearer ' + str(token())
-# api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
-# api_call_response = requests.get(url, headers=api_call_headers)
-# Näille
-
 # Finder ja apufunktiot omaan tiedostoon
-
 
 # Hakee tokenin jota hyödynnetään muiden funktioiden get ja post pyyntöjen headerin auth osiossa
 def get_token(): 
@@ -228,6 +220,9 @@ def finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_
         obj_loppu = obj["loppusijainti"]["enkoodattu"]
         osa = prev_result['aosa']
         vertailtava_osa = obj["alkusijainti"]["osa"]
+        # Testaukseen vain yhdellä ajoradalla
+        if vertailtava_osa["alkusijainti"]["ajorata"] != 1: return None
+        # -----
         rajat = encoded_split_cases(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu, osa, vertailtava_osa)
         if rajat == 0: 
                 return {
@@ -310,6 +305,8 @@ def finder_encoded(obj_list, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus,
                         elif "alkusijainti" in obj and "loppusijainti" in obj:
                                 find = finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, prev_result)
 
+                                # Tarkistaa onko objektia olemassa jo listassa
+                                # Jos objekti onjo listassa, sitä ei lisätä listaan
                                 if find:
                                         duplicate = False
                                         for x in results: 

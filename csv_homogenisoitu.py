@@ -116,28 +116,19 @@ class CsvLinearReference:
                 except: 
                         return None
                         
-        # Finder encoded saataa suurentaa vanhoja aet ja let välejä jos uuden kohdaluokan pituus on suurempi kuin aikasemman
-        # Rivien määrä : n. 5433
         def generate_rows(self, prev_result, obj_type, enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, rows):
-                #result_list = []
                 try: 
                         if obj_type != 'kaistapa':
                                 # Haetaan kohdeluokan objecti lista
                                 cur = self.kohdeluokat[obj_type]
                                 # Etsitään kohdeluokan objecti listasta objectit jotka ovat tietyllä enkoodatulla välillä
-                                #print("here")
                                 found_objects_on_span = []
                                 cur_result = copy.deepcopy(prev_result)
-                                #print("Alkuperäinen: Osa: " + str(cur_result['aosa']) + " Aet: " + str(cur_result['aet']) + " Let: " + str(cur_result['let']) + " Enka: " + str(enkoodattu_alku) + " Enkl: " + str(enkoodattu_loppu))
                                 found_objects_on_span = finder_encoded(cur.get(prev_result['tie']) or [], prev_result['tie'], enkoodattu_alku, enkoodattu_loppu, ominaisuus, tarkenne, cur_result)
                                 # Jos objectejä löytyy
                                 if found_objects_on_span:
-     
-
-                                        #print("-------------------ennen------------------")
                                         # Käydään objectit läpi
                                         for kohdeluokka in found_objects_on_span:
-                                                #print(kohdeluokka)
                                                 if kohdeluokka["enkoodattu_alku"] != kohdeluokka["enkoodattu_loppu"]:
                                                         # Kopioidaan kohdeluokka objecti ettei se muutu
                                                         obj = copy.deepcopy(kohdeluokka)
@@ -150,8 +141,6 @@ class CsvLinearReference:
                                                         new_result[obj_type] = obj['value']
                                                         # Haetaan seuraavan kohdeluokan avain
                                                         next_type = copy.deepcopy(self.next_key(prev_result, obj_type))
-                                                        #print(next_type)
-                                                        #time.sleep(1)
                                                         # Kutsutaan uudestaan generate_rows funktiota, uudella resultilla sekä uudella kohdeluokalla
                                                         if next_type and next_type != 'kaistapa': 
                                                                 self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], self.paths[next_type][0], self.paths[next_type][1], rows)
@@ -159,21 +148,14 @@ class CsvLinearReference:
                                                                 self.generate_rows(new_result, next_type, obj['enkoodattu_alku'], obj['enkoodattu_loppu'], None, None, rows)
                                                         # Jos seuraavaa kohdeluokkaa ei ole, lisätään tulos listaan 
                                                         else:
-                                                                print("------------------------tyhjä-------------------------------")
                                                                 rows.append(new_result)
-
-                                        #print("-------------------jälkeen-------------------")
                                 else: 
                                         next_type = self.next_key(prev_result, obj_type)
-                                        #print("Alempana: ")
-                                        #print(next_type)
                                         if next_type and next_type != 'kaistapa': 
                                                 self.generate_rows(prev_result, next_type, enkoodattu_alku, enkoodattu_loppu, self.paths[next_type][0], self.paths[next_type][1], rows)
                                         elif next_type and next_type == 'kaistapa':
                                                 self.generate_rows(prev_result, next_type, enkoodattu_alku, enkoodattu_loppu, None, None, rows)
                                         else:   
-
-                                                #print("here")
                                                 rows.append(prev_result)
                         
                         else: 
@@ -228,6 +210,7 @@ class CsvLinearReference:
                                         result = {
                                                 'tie'           : tie,
                                                 'aosa'          : aosa,
+                                                'ajr'           : 1,
                                                 'aet'           : aet,
                                                 'losa'          : losa,
                                                 'let'           : let,
@@ -285,6 +268,12 @@ class CsvLinearReference:
                                 new_row['let'] = row2['let']
                                 new_row['pituus'] = new_row['let'] - new_row['aet']
                                 return new_row
+                        elif row1['let'] > row2['let']:
+                                for key in keys:
+                                        if row1[key] != row2[key]:
+                                                return None
+                                new_row = row1
+                                return new_row
                         else: 
                                 return None
 
@@ -293,30 +282,89 @@ class CsvLinearReference:
         def combine_rows_loop(self,rows):
                 new_rows = []
                 i = 1 
-                new_rows.append(rows[0])
+                cur_row = rows[0]
                 while i < len(rows):
-                        row1 = new_rows[-1]
+
                         row2 = rows[i]
-                        combined = self.combine_two_rows(row1,row2)
+                        combined = self.combine_two_rows(cur_row,row2)
                         if combined:
-                                new_rows.append(combined)
+                                cur_row = combined
                         else: 
-                                new_rows.append(row2)
+                                new_rows.append(cur_row)
+                                cur_row = copy.deepcopy(row2)
 
                         i += 1
                 return new_rows
                         
+        #Etsi kaikki uniikit merkitsevät tiedot eli tie,aosa,pituus,tiety jne / ei aet, let, pituus
+        #Palautettava set sisältää listoja (dictejä ei voi käyttää koska ne eivät ole "hashable")
+        #Listat ovat muotoa [tie, aosa, tiety, vluonne, toiml, kplk, viherlk, kaistapa, pyplk, soratielk]
+        #---------------------------------
+        def to_meaningful_sets(self, rows):
+                unique_data = set()
+                for row in rows:
+                        current_data = (
+                                row['tie'],
+                                row['aosa'],
+                                row['tiety'],
+                                row['vluonne'],
+                                row['toiml'],
+                                row['kplk'],
+                                row['viherlk'],
+                                row['kaistapa'],
+                                row['pyplk'],
+                                row['soratielk']
+                        )  
+                        unique_data.add(current_data)
 
+                return unique_data
+
+        def filter_check_meaningful_data(self, row, data):
+                row_data = (
+                        row['tie'],
+                        row['aosa'],
+                        row['tiety'],
+                        row['vluonne'],
+                        row['toiml'],
+                        row['kplk'],
+                        row['viherlk'],
+                        row['kaistapa'],
+                        row['pyplk'],
+                        row['soratielk']
+                )
+                return row_data == data
+
+
+        def group_meaningful_data(self, rows):
+                grouped_rows = {}
+                for row in rows: 
+                        if row['tie'] in grouped_rows:
+                                cur = grouped_rows[row['tie']]
+                                cur.append(row)
+                                grouped_rows[row['tie']] = cur
+                        else: 
+                                grouped_rows[row['tie']] = []
+                                grouped_rows[row['tie']].append(row)
+
+                return grouped_rows
+
+        #----------------------------------
 
         def write_and_run(self):
                 self.to_roadparts()
+                print("writables aika")
+                w_start = time.time()
                 writables = self.writable_objects()
+                w_end = time.time()
+                print(w_end-w_start)
+                print("-------------------")
                 date = datetime.today().strftime('%d-%m-%Y')
                 filename = date + "-tieosat.csv"
                 with open(filename, 'w', newline='') as csvfile:
                         fieldnames = [
                                 'tie',
                                 'aosa',
+                                'ajr',
                                 'aet',
                                 'losa',
                                 'let',
@@ -333,11 +381,41 @@ class CsvLinearReference:
                         
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=';')
                         writer.writeheader()
+                        #Poistaa duplikaattii rivit
                         without_duplicates = pd.DataFrame(writables).drop_duplicates().to_dict('records')
-                        sorted_writables = sorted(without_duplicates, key=lambda k: (k['tie'], k['aosa'], k['aet']))
-                        combined_writables = self.combine_rows_loop(sorted_writables)
-                        for record in combined_writables:
-                                writer.writerow(record)
+                        #Järjestää rivit ensin teiden perusteella, sitten alkuosan ja vielä alun etäisyyden perusteella
+                        print("Sorttauksen aika")
+                        start_sort = time.time()
+                        lista_riveistä = sorted(without_duplicates, key=lambda k: (k['tie'], k['aosa'], k['aet']))
+                        sort_end = time.time()
+                        print(sort_end - start_sort)
+                        print("------------")
+                        grouped_rivit = self.group_meaningful_data(lista_riveistä)
+                        #combined_writables = self.combine_rows_loop(sorted_writables)
+                        #Muodostaa setin joka sisältää uniikit merkitsevät tiedot
+                        unique_data = self.to_meaningful_sets(lista_riveistä)
+                        
+                        #start = time.time()
+                        #x = list(filter(lambda row: self.filter_check_meaningful_data(row, (1,3,'t1','valu02', 'toiml01', 'kplk01', None, 'pt02', 'pklk08', None)), lista_riveistä))
+                        #print(x)
+                        #       
+                        #end = time.time()
+                        #print(end - start)
+  
+                        #lista_rivestä ovat muotoa [tie, aosa, tiety, vluonne, toiml, kplk, viherlk, kaistapa, pyplk, soratielk]
+                        start = time.time()
+                        y = list(map(lambda meaningful_data: list(filter(lambda row: self.filter_check_meaningful_data(row, meaningful_data), grouped_rivit[meaningful_data[0]])),unique_data))
+
+                        end = time.time()
+                        print(end - start)
+                        print(y[0])
+
+                        for record in y:
+                                for record2 in record:
+                                        writer.writerow(record2)
+
+                        #Mahdollisesti lista_rivestä (sorted_writables) voisi ryhmitellä teiden mukaan ajon nopeuttamiseksi.
+                        #Mapin sisällä olevan filterin voi korvata ns. apu_filterillä, eli toisella functiolla joka kutsuu mahdolisesti filteriä + muuta roskaa.
 
                 return filename
 
