@@ -30,3 +30,4 @@
     - set https_proxy= __proxy address__
     - set ftp_proxy= __proxy address__
     - For example if proxy address starts with http -> use set http_proxy
+  - More info here: https://2.python-requests.org/en/latest/user/advanced/#proxies
