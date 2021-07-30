@@ -22,7 +22,7 @@
 - App can be found on browser at localhost:5000
 
 # Proxies
-- If your device has restrictions, it is possible that application cant send requests to the API
+- If your device has restrictions, it is possible that the application cant send requests to the API
 - Fix: 
   - Once set flask_app=application.py is done
   - Depending on the proxy use one of the next: 
