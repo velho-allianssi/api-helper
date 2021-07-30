@@ -25,10 +25,8 @@
 - If your device has restrictions, it is possible that application cant send requests to the API
 - Fix: 
   - Once set flask_app=application.py is done
-  - type: 
+  - Depending on the proxy use one of the next: 
     - set http_proxy= __proxy address__
-      or
     - set https_proxy= __proxy address__
-      or
     - set ftp_proxy= __proxy address__
-    - depending on the proxy, for example if proxy address starts with http -> use set http_proxy
+    - For example if proxy address starts with http -> use set http_proxy
