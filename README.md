@@ -1,13 +1,10 @@
 # api-helper
 
 # How to run locally
-
 - Install python3
 - Open console and navigate to project folder
 - Set up python virtual env:
   - py -m venv .venv or python3 -m venv .venv
-
-
 - Activate python env:
   - cd .venv -> cd scripts -> activate 
   - (cd back to main folder: cd .. -> cd ..)
