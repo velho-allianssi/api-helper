@@ -221,7 +221,7 @@ def finder_encoded_alku_ja_loppu_sijainti(obj, tie, enkoodattu_alku, enkoodattu_
         osa = prev_result['aosa']
         vertailtava_osa = obj["alkusijainti"]["osa"]
         # Testaukseen vain yhdellä ajoradalla
-        if vertailtava_osa["alkusijainti"]["ajorata"] != 1: return None
+        #if vertailtava_osa["alkusijainti"]["ajorata"] != 1: return None
         # -----
         rajat = encoded_split_cases(enkoodattu_alku, enkoodattu_loppu, obj_alku, obj_loppu, osa, vertailtava_osa)
         if rajat == 0: 
@@ -421,58 +421,59 @@ def group_by_tie(obj_list):
 
 def split_at_parts(tieosat, kohdeluokka):
         result = []
-        try: 
-                alku  = kohdeluokka["alkusijainti"] 
-                loppu = kohdeluokka["loppusijainti"]
+        try:    
+                if "alkusijainti" in kohdeluokka:
+                        alku  = kohdeluokka["alkusijainti"] 
+                        loppu = kohdeluokka["loppusijainti"]
 
-                if alku["osa"] != loppu["osa"]:
+                        if alku["osa"] != loppu["osa"]:
 
-                        tieosa_alku = finder(tieosat, alku["tie"], alku["osa"], alku["osa"], None, None)
+                                tieosa_alku = finder(tieosat, alku["tie"], alku["osa"], alku["osa"], None, None)
 
-                        new_kohdeluokka = copy.deepcopy(kohdeluokka)
-                        new_kohdeluokka["loppusijainti"]["osa"]      = alku["osa"]
-                        new_kohdeluokka["loppusijainti"]["etaisyys"] = tieosa_alku["pituus"]
-                        new_kohdeluokka["loppusijainti"]["etaisyys-tien-alusta"] = tieosa_alku["lopun-etaisyys-tien-alusta"]
-                        new_kohdeluokka["loppusijainti"]["enkoodattu"] = tieosa_alku["enkoodattu-loppu"]
-                        result.append(new_kohdeluokka)
-                        i = alku["osa"] + 1
+                                new_kohdeluokka = copy.deepcopy(kohdeluokka)
+                                new_kohdeluokka["loppusijainti"]["osa"]      = alku["osa"]
+                                new_kohdeluokka["loppusijainti"]["etaisyys"] = tieosa_alku["pituus"]
+                                new_kohdeluokka["loppusijainti"]["etaisyys-tien-alusta"] = tieosa_alku["lopun-etaisyys-tien-alusta"]
+                                new_kohdeluokka["loppusijainti"]["enkoodattu"] = tieosa_alku["enkoodattu-loppu"]
+                                result.append(new_kohdeluokka)
+                                i = alku["osa"] + 1
 
-                        while i < loppu["osa"]:
-                                tieosa_cur = finder(tieosat, alku["tie"], i, i, None, None)
-                                if tieosa_cur:
-                                        cur_kohdeluokka = copy.deepcopy(kohdeluokka)
-                                        cur_alku = {
-                                                'osa': i,
-                                                'tie': tieosa_cur["tie"],
-                                                'etaisyys': 0,
-                                                'etaisyys-tien-alusta': tieosa_cur["alun-etaisyys-tien-alusta"],
-                                                'enkoodattu': tieosa_cur["enkoodattu-alku"],
-                                                'ajorata': alku["ajorata"]
-                                        }
-                                        cur_loppu = {
-                                                'osa': i,
-                                                'tie': tieosa_cur["tie"],
-                                                'etaisyys': tieosa_cur["pituus"],
-                                                'etaisyys-tien-alusta': tieosa_cur["lopun-etaisyys-tien-alusta"],
-                                                'enkoodattu': tieosa_cur["enkoodattu-loppu"],
-                                                'ajorata': alku["ajorata"]
-                                        }
-                                        cur_kohdeluokka["alkusijainti"] = cur_alku
-                                        cur_kohdeluokka["loppusijainti"] = cur_loppu
-                                        result.append(cur_kohdeluokka)
-                                i = i + 1 
+                                while i < loppu["osa"]:
+                                        tieosa_cur = finder(tieosat, alku["tie"], i, i, None, None)
+                                        if tieosa_cur:
+                                                cur_kohdeluokka = copy.deepcopy(kohdeluokka)
+                                                cur_alku = {
+                                                        'osa': i,
+                                                        'tie': tieosa_cur["tie"],
+                                                        'etaisyys': 0,
+                                                        'etaisyys-tien-alusta': tieosa_cur["alun-etaisyys-tien-alusta"],
+                                                        'enkoodattu': tieosa_cur["enkoodattu-alku"],
+                                                        'ajorata': alku["ajorata"]
+                                                }
+                                                cur_loppu = {
+                                                        'osa': i,
+                                                        'tie': tieosa_cur["tie"],
+                                                        'etaisyys': tieosa_cur["pituus"],
+                                                        'etaisyys-tien-alusta': tieosa_cur["lopun-etaisyys-tien-alusta"],
+                                                        'enkoodattu': tieosa_cur["enkoodattu-loppu"],
+                                                        'ajorata': alku["ajorata"]
+                                                }
+                                                cur_kohdeluokka["alkusijainti"] = cur_alku
+                                                cur_kohdeluokka["loppusijainti"] = cur_loppu
+                                                result.append(cur_kohdeluokka)
+                                        i = i + 1 
 
-                        second_last_kohdeluokka = copy.deepcopy(result[-1])
+                                second_last_kohdeluokka = copy.deepcopy(result[-1])
 
-                        last_kohdeluokka = copy.deepcopy(kohdeluokka)
-                        last_kohdeluokka["alkusijainti"]["osa"]         = loppu["osa"]
-                        last_kohdeluokka["alkusijainti"]["etaisyys"]    = 0
-                        last_kohdeluokka["alkusijainti"]["etaisyys-tien-alusta"] = second_last_kohdeluokka["loppusijainti"]["etaisyys-tien-alusta"]
-                        last_kohdeluokka["alkusijainti"]["enkoodattu"]           = second_last_kohdeluokka["loppusijainti"]["enkoodattu"]
+                                last_kohdeluokka = copy.deepcopy(kohdeluokka)
+                                last_kohdeluokka["alkusijainti"]["osa"]         = loppu["osa"]
+                                last_kohdeluokka["alkusijainti"]["etaisyys"]    = 0
+                                last_kohdeluokka["alkusijainti"]["etaisyys-tien-alusta"] = second_last_kohdeluokka["loppusijainti"]["etaisyys-tien-alusta"]
+                                last_kohdeluokka["alkusijainti"]["enkoodattu"]           = second_last_kohdeluokka["loppusijainti"]["enkoodattu"]
 
-                        result.append(last_kohdeluokka)
+                                result.append(last_kohdeluokka)
         
-        except Exception as e: 
+        except Exception as e:
                         print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
 
         if not result: 

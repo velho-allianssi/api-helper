@@ -4,7 +4,27 @@
 
 {% block content %}
     <div>
-        <h2 style="padding-bottom: 1%">{{class_name}}</h2>
+        <div class="row" style="padding-bottom: 3%;">
+            <div class="col">
+                <h2>{{class_name}}</h2>
+            </div>
+                <div id="load" class="ld-ext-right">
+ 
+                    <form action="/download/meta/{{class_name}}" style="padding-bottom: 1%">
+                        <input type="submit" value="Lataa" class="btn btn-primary ld ldld bare">
+                    </form>
+
+                </div>
+                <script>
+                    var btn = document.getElementById("load");
+                    var loader = new ldLoader({ root: btn });
+                    btn.addEventListener("click", function() {
+                      loader.toggle();
+                    });
+                  </script>
+
+                  
+        </div>
         <div class="row">
             <div class="col">
                 <h4>Kohdeluokat</h4>

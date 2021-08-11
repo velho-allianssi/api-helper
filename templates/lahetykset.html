@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
- 
+    <h1>XYEET</h1>
+    <div class="input-group">
+        <form action="{{ url_for('csv_to_json')}}" method="POST">
+            <input class="form-control" type="file" id="formFile" aria-label="Upload" id="inputGroupFile" aria-describedby="inputGroupFileAddon">
+            <input type="hidden" id="target" name="target" value={{target}}>
+            <button type="submit" class="btn btn-primary mb-3" style="margin-top: 1%;" id="inputGroupFileAddon">Lähetä</button>
+        </form>
+    </div>
+
     <h3 style="padding-bottom: 1%">Lähetykset:</h3>
     {% if data %}
         <ul class="list-group" style="list-style: none;">

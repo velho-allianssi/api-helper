@@ -9,14 +9,12 @@ from iteration_utilities import unique_everseen
 # Muuttujien nimet selkeämmäksi esim enkoodattu_alku => enkoodattu_alku
 
 class CsvLinearReference:
-        def __init__(self):
+        def __init__(self, options):
                 auth_token = str(get_token())
                 self.kohdeluokat = {
                                 'tieosat'       : grouped_by_tie("kohdeluokka_sijainti_tieosa", auth_token),
                                 'kplk'          : grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_talvihoitoluokka", auth_token),
                                 'viherlk'       : grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_viherhoitoluokka", auth_token),
-                                # ---
-                                
                                 'kaistapa'      : {
                                         'sidotut'          : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sidotut-paallysrakenteet", auth_token),
                                         'sitomattomat'     : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_sitomattomat-pintarakenteet", auth_token),
@@ -24,8 +22,6 @@ class CsvLinearReference:
                                         'pintaukset'       : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_pintaukset", auth_token),
                                 #        'kasvillisuudet '  : grouped_by_tie("kohdeluokka_paallyste-ja-pintarakenne_kasvillisuusrakenteet", auth_token)
                                 },
-                                
-                                # ---
                                 'toiml'         : grouped_by_tie("kohdeluokka_alueet_pohjavesialueet", auth_token),
                                 'soratielk'     : grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_soratieluokka", auth_token),
                                 'pyplk'         : grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_paallysteen-korjausluokka", auth_token),
@@ -37,8 +33,6 @@ class CsvLinearReference:
                 self.paths = {
                         'kplk'          : ["ominaisuudet", "talvihoitoluokka"],
                         'viherlk'       : ["ominaisuudet", "viherhoitoluokka"],
-                        # ---
-                        
                         'kaistapa'      : {
                                 'sidotut'          : ["ominaisuudet", "paallysteen-tyyppi"],
                                 'sitomattomat'     : ["ominaisuudet", "runkomateriaali"],
@@ -46,18 +40,19 @@ class CsvLinearReference:
                                 'pintaukset'       : ["ominaisuudet", "pintauksen-tyyppi"],
                         #        'kasvillisuudet '  : ["ominaisuudet", "materiaali"],
                         },
-                        # --- 
                         'toiml'         : ["ominaisuudet", "toiminnallinen-luokka"],
                         'soratielk'     : ["ominaisuudet", "soratieluokka"],
                         'pyplk'         : ["ominaisuudet", "paallysteen-korjausluokka"],
-                        #'urakat'       : grouped_by_tie("kohdeluokka_urakka_maanteiden-hoitourakka", auth_token),
+                        #'urakat'        : ["ominaisuudet", "urakka-koodi"],
                         'toiml'         : ["ominaisuudet", "toiminnallinen-luokka"],
                         'vluonne'       : ["ominaisuudet", "vaylan-luonne"],
                 }
+                
+                self.options = options
 
         def to_roadparts(self):
                 for key,value in self.kohdeluokat.items(): 
-                        if key != 'tieosat':
+                        if key != 'tieosat' and key != 'kaistapa':
                                 for tie, object in value.items(): 
                                         for obj in object:
                                                 if tie in self.kohdeluokat['tieosat']:
@@ -66,6 +61,7 @@ class CsvLinearReference:
                                                                 object.remove(obj)
                                                                 for b in new_parts: 
                                                                         object.append(b)
+              
 
 
 
@@ -210,23 +206,26 @@ class CsvLinearReference:
                                         result = {
                                                 'tie'           : tie,
                                                 'aosa'          : aosa,
-                                                'ajr'           : 1,
                                                 'aet'           : aet,
                                                 'losa'          : losa,
                                                 'let'           : let,
                                                 'pituus'        : pituus,
                                                 'tiety'         : hal_luokka["hallinnollinen-luokka"].split('/')[1],
-                                                'vluonne'       : None,
-                                                'toiml'         : None,
-                                                'kplk'          : None,
-                                                'viherlk'       : None,
-                                                'kaistapa'      : None,
-                                                'pyplk'         : None,
-                                                'soratielk'     : None
+                                                #'vluonne'       : None,
+                                                #'toiml'         : None,
+                                                #'kplk'          : None,
+                                                #'viherlk'       : None,
+                                                #'kaistapa'      : None,
+                                                #'pyplk'         : None,
+                                                #'soratielk'     : None
                                         }
-
-                                        # Call recursive function to fill missing classes 
-                                        self.generate_rows(copy.deepcopy(result), 'vluonne', enkoodattu_alku, enkoodattu_loppu, self.paths['vluonne'][0], self.paths['vluonne'][1], results)
+                                        for option in self.options: 
+                                                result[option] = None
+              
+                                        # Call recursive function to fill missing classes
+                                        start_type = self.next_key(result, 'tiety') 
+                                        self.generate_rows(copy.deepcopy(result), start_type, enkoodattu_alku, enkoodattu_loppu, self.paths[start_type][0], self.paths[start_type][1], results)
+                                        #self.generate_rows(copy.deepcopy(result), 'vluonne', enkoodattu_alku, enkoodattu_loppu, self.paths['vluonne'][0], self.paths['vluonne'][1], results)
                         
                 return results
 
@@ -303,6 +302,7 @@ class CsvLinearReference:
         def to_meaningful_sets(self, rows):
                 unique_data = set()
                 for row in rows:
+                        '''
                         current_data = (
                                 row['tie'],
                                 row['aosa'],
@@ -315,11 +315,30 @@ class CsvLinearReference:
                                 row['pyplk'],
                                 row['soratielk']
                         )  
+                        '''
+                        base_data = [
+                                row['tie'],
+                                row['aosa'],
+                                row['tiety']
+                        ]
+                        for opt in self.options:
+                                base_data.append(row[opt])
+                        current_data = tuple(base_data)
+
                         unique_data.add(current_data)
 
                 return unique_data
 
         def filter_check_meaningful_data(self, row, data):
+                base_data = [
+                        row['tie'],
+                        row['aosa'],
+                        row['tiety']
+                ]
+                for opt in self.options:
+                        base_data.append(row[opt])
+                row_data = tuple(base_data)
+                '''
                 row_data = (
                         row['tie'],
                         row['aosa'],
@@ -332,6 +351,7 @@ class CsvLinearReference:
                         row['pyplk'],
                         row['soratielk']
                 )
+                '''
                 return row_data == data
 
 
@@ -348,6 +368,38 @@ class CsvLinearReference:
 
                 return grouped_rows
 
+
+        def combine_meaningful_data(self, row_list):
+
+                # rekursiivinen sisäfunktio
+                # palauttaa rivin jos sille ei löydy enää yhdisteltäviä rivejä
+                def inner_combiner(aet_row, row_list):
+                        let = aet_row['let']
+                        next_row = next((row for row in row_list if row['aet'] == let), None)
+                        if next_row: 
+                                aet_row['let'] = next_row['let']
+                                row_list.remove(next_row)
+                                aet_row = inner_combiner(aet_row, row_list)
+                        else: 
+                                return aet_row
+
+                # ensin käydään läpi aet 0 
+                aet_zero: list = list(filter(lambda row: row['aet'] == 0, row_list))
+                row_list: list = row_list
+                for aet_row in aet_zero:
+                        row_list.remove(aet_row) 
+                        aet_row = inner_combiner(aet_row, row_list)
+
+        
+                for row_left in row_list:
+                        row_list.remove(row_left)
+                        row_left = inner_combiner(row_left, row_list)
+                        aet_zero.append(row_left)
+                
+                return aet_zero
+
+
+                        
         #----------------------------------
 
         def write_and_run(self):
@@ -364,20 +416,21 @@ class CsvLinearReference:
                         fieldnames = [
                                 'tie',
                                 'aosa',
-                                'ajr',
                                 'aet',
                                 'losa',
                                 'let',
                                 'pituus',
                                 'tiety',
-                                'vluonne',
-                                'toiml',
-                                'kplk',
-                                'viherlk',
-                                'kaistapa',
-                                'pyplk',
-                                'soratielk'
+                                #'vluonne',
+                                #'toiml',
+                                #'kplk',
+                                #'viherlk',
+                                #'kaistapa',
+                                #'pyplk',
+                                #'soratielk'
                         ]
+                        fieldnames.extend(self.options)
+                        
                         
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=';')
                         writer.writeheader()
@@ -405,12 +458,16 @@ class CsvLinearReference:
                         #lista_rivestä ovat muotoa [tie, aosa, tiety, vluonne, toiml, kplk, viherlk, kaistapa, pyplk, soratielk]
                         start = time.time()
                         y = list(map(lambda meaningful_data: list(filter(lambda row: self.filter_check_meaningful_data(row, meaningful_data), grouped_rivit[meaningful_data[0]])),unique_data))
+                        sorted_y = sorted(y, key=lambda k: k[0]['tie'])
+                        for x in sorted_y:
+                                if len(x) > 1: 
+                                        x = self.combine_meaningful_data(x)
 
                         end = time.time()
                         print(end - start)
-                        print(y[0])
+                        print(sorted_y[0])
 
-                        for record in y:
+                        for record in sorted_y:
                                 for record2 in record:
                                         writer.writerow(record2)
 

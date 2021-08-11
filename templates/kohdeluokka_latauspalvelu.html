@@ -53,34 +53,17 @@
         </div>
         <div class="col col-md-auto">
             <form action="/{{target}}/csv" style="padding-bottom: 1%">
-                <input type="submit" value="EXPORT as CSV" class="btn btn-primary">
+                <input type="submit" value="EXPORT as CSV" class="btn btn-success">
             </form>
         </div>
 
         <div class="col col-lg-2">
             <form action="/download/{{target}}" style="padding-bottom: 1%">
-                <input type="submit" value="Download NDJSON" class="btn btn-secondary">
+                <input type="submit" value="Download NDJSON" class="btn btn-primary">
             </form>
         </div>
     </div>
     {% if "kohdeluokka" in target %}
-        <h4>Lähetä:</h4>
-        <div class="input-group">
-            <form action="{{ url_for('curl_put')}}" method="POST">
-                <input class="form-control" type="file" id="formFile" aria-label="Upload" id="inputGroupFile" aria-describedby="inputGroupFileAddon">
-                <input type="hidden" id="target" name="target" value={{target}}>
-                <button type="submit" class="btn btn-primary mb-3" style="margin-top: 1%;" id="inputGroupFileAddon">Lähetä</button>
-            </form>
-        </div>
-        <h4>Lataa:</h4>
-        <div>
-            <form action="/{{target}}/csv" style="padding-bottom: 1%">
-                <input type="submit" value="EXPORT as CSV" class="btn btn-primary">
-            </form>
-            <form action="/download/{{target}}" style="padding-bottom: 1%">
-                <input type="submit" value="Download NDJSON" class="btn btn-secondary">
-            </form>
-        </div>
         <h4>Hae:</h4>
         <div class="form-floating">
             {% set splits = target.split("_") %}
@@ -94,10 +77,24 @@
                 <button type="submit" class="btn btn-primary mb-3" style="margin-top: 1%;">Hae</button>
             </form>
             {% if filters %}
-                <p>Nykyinen haku:</p>
-                <p>Tie: {{filters['tie']}}</p>
-                <p>Alku osa: {{filters['aosa']}} </p>
-                <p>Loppu osa: {{filters['losa']}}</p>
+                <table class="table table bordered" style="width:40%">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>tie</th>
+                            <th>aosa</th>
+                            <th>losa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row"></th>
+                            <td>Tie: {{filters['tie']}}</td>
+                            <td>Alku osa: {{filters['aosa']}} </td>
+                            <td>Loppu osa: {{filters['losa']}}</td>
+                        </tr>
+                    </tbody>
+                </table>    
             {% endif %}
         </div>
 

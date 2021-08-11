@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+
+
 {% macro create_table(node, color) %}
     {% if color == 1 %}
         <table class="table table-hover">
@@ -43,7 +45,13 @@
 {% endmacro %}
 
 {% block content %}
-    <h3 style="padding-bottom: 1%">Lähetykset:</h3>
+  
+    {% if lahetystunniste %}
+        <h3 style="padding-bottom: 1%">{{lahetystunniste}}</h3>
+    {% else %}
+        <h3 style="padding-bottom: 1%">Lähetykset:</h3>
+    {% endif %}
+
     <ul class="list-group" style="list-style: none;">
     {% for key, value in data.items() %}
         <li style="padding-bottom: 1%">
