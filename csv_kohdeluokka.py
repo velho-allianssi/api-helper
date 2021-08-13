@@ -10,20 +10,19 @@ import json
 def csv_write_kohdeluokka(kohdeluokka_nimi):
     content, url = kohdeluokka_dict(kohdeluokka_nimi)
     filename = kohdeluokka_nimi.split("_")[2] + ".csv"
-    #data = pd.json_normalize(content)
-    data = json_to_dataframe(content)
+    data = pd.json_normalize(content)
+    #data = json_to_dataframe(content)
     data = data.reindex(sorted(data.columns), axis=1)
-    data.to_csv(filename, encoding = 'utf-8-sig', sep = ";")
+    data.to_csv(filename, encoding = 'utf-8-sig', sep = ";", index=False)
     return filename
    
 
-def convert_csv_to_json():
-    csv_content = pd.read_csv("aidat.csv", sep=';', encoding="utf-8-sig")
-    reverse_normalization = to_formatted_json(csv_content)
-    dumps = json.dumps(reverse_normalization)
-    f = open("testi.json", "w")
-    f.write(dumps)
-    return "helloworld"
+def convert_csv_to_json(file):
+    csv_content = pd.read_csv(file, sep=';', encoding="utf-8-sig", dtype='unicode')
+    data = csv_content.where(pd.notnull(csv_content), Null)
+    reverse_normalization = df_to_formatted_json(data)
+    return reverse_normalization
+
 
 # https://stackoverflow.com/questions/54776916/inverse-of-pandas-json-normalize
 def df_to_formatted_json(df, sep="."):

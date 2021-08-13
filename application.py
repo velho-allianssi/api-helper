@@ -169,6 +169,8 @@ def download_ndjson(kohdeluokka):
 
     return send_file(filename, as_attachment=True)
 
+
+# Lataa metatieto palvelusta tietyn kohdeluokan metatiedot
 @app.route('/download/meta/<kohdeluokka>')
 def download_meta_json(kohdeluokka):
     url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/metatiedot"
@@ -183,7 +185,6 @@ def download_meta_json(kohdeluokka):
         json.dump(content, f)
 
     return send_file(filename, as_attachment=True)
-
 
 @app.route('/laheta')
 def laheta():
@@ -200,6 +201,7 @@ def laheta():
     vaihtoehdot.popitem()
     return render_template('laheta.html', data=vaihtoehdot)
 
+# Hakee kaikki meneillään olevat lähetykset
 @app.route('/lahetykset')
 def lahetykset():
     auth = 'Bearer ' + str(get_token())
@@ -216,6 +218,7 @@ def lahetykset():
     
     return render_template('upload_check.html', data=as_dict, lahetystunniste=None)
 
+# Tarkistaa tietyn lähetyksen statuksen
 @app.route('/check_status/<tunniste>')
 def check_status(tunniste):
     auth = 'Bearer ' + str(get_token())
@@ -224,6 +227,7 @@ def check_status(tunniste):
     response = requests.get(url, headers=headers)
     return render_template('upload_check.html', data=response.json(), lahetystunniste=tunniste)
 
+# Lähettää tiedoston lähetyspalveluun
 @app.route('/put', methods = ['POST'])
 def curl_put():
     if request.method == 'POST':
@@ -249,13 +253,12 @@ def curl_put():
 
         #return redirect(url_for('lahetykset'))
 
+# Yhdistelee useiden kohdeluokkien tietoja yhdeksi csv:ksi
 @app.route('/csv/tieosat', methods = ['POST'])
 def tieosat_csv():
     if request.method == 'POST':
         options_json = request.form['selected_options']
         options = json.loads(options_json)
-        print(options)
-        print(type(options))
         options.reverse()
         obj = CsvLinearReference(options)
         filename = obj.write_and_run()
@@ -284,7 +287,13 @@ def csv_options():
 def csv_to_json():
     if request.method == 'POST':
         files = request.files['file']
-        if files: print("files indeed")
-        print("here2")
+        filename = files.filename.split(".")[0] + ".json"
+        print(filename.split(".")[0])
         converted = convert_csv_to_json(files)
-        return send_file(converted, as_attachment=True)
+        #f = open(filename + ".json", "w")
+        #f.write(converted)
+        #f.close()
+
+        with open(filename, 'w') as f:
+            json.dump(converted, f)
+        return send_file(filename, as_attachment=True, attachment_filename=filename)

@@ -8,13 +8,12 @@
             <div class="col">
                 <h2>{{class_name}}</h2>
             </div>
-                <div id="load" class="ld-ext-right">
+            <div class="col col-md-auto">
  
                     <form action="/download/meta/{{class_name}}" style="padding-bottom: 1%">
-                        <input type="submit" value="Lataa" class="btn btn-primary ld ldld bare">
+                        <input type="submit" value="Lataa" class="btn btn-primary">
                     </form>
 
-                </div>
                 <script>
                     var btn = document.getElementById("load");
                     var loader = new ldLoader({ root: btn });
@@ -22,7 +21,7 @@
                       loader.toggle();
                     });
                   </script>
-
+            </div>
                   
         </div>
         <div class="row">

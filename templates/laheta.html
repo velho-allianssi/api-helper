@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div style="width:50%; margin:auto">
+    <h3>Lähetä:</h3>
     <select class="form-select form-select-lg mb-3" name="nimiavaruus" id="nimiavaruus" onchange="dynamic_options(this)">
         {% for key, value in data.items() %}
             <option value={{key}}>{{key}}</option>
@@ -41,5 +42,15 @@
             input.value = option.value
         }
     </script>
+
+
+    <div class="row">
+        <h3>CSV -> JSON muuntaja</h3>
+        <form action="{{ url_for('csv_to_json')}}" method="POST" enctype=multipart/form-data>
+            <input class="form-control" type="file" id="file" name="file" aria-label="Upload" id="inputGroupFile" aria-describedby="inputGroupFileAddon">
+            <button type="submit" class="btn btn-primary mb-3" style="margin-top: 1%;" id="inputGroupFileAddon">Muunna</button>
+        </form>
+
+    </div>
 </div>
 {% endblock %}
