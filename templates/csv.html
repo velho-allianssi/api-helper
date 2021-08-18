@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
     <div class="container_csv">
-        <ul class="ks-cboxtags">
+
             {% for option, desc in options.items() %}
-                <li>
-                    <input type="checkbox" value="{{option}}" id="{{desc}}" onchange="update_selected()">
-                    <label for="{{desc}}">
-                    {{desc}}
-                    </label>
-                </li>        
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="{{option}}" id="{{desc}}" onchange="update_selected()">
+                <label  class="form-check-label" for="{{desc}}">
+                {{desc}}
+                </label>
+            </div>
             {% endfor %}
-        </ul>
+ 
 
         <form action="{{ url_for('tieosat_csv')}}" method="POST">
             <input type="hidden" id="selected_options" name="selected_options" value="">

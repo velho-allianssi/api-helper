@@ -2,14 +2,16 @@
 {% block content %}
 <div style="width:50%; margin:auto">
     <h3>Lähetä:</h3>
+    tietokokonaisuus
     <select class="form-select form-select-lg mb-3" name="nimiavaruus" id="nimiavaruus" onchange="dynamic_options(this)">
         {% for key, value in data.items() %}
             <option value={{key}}>{{key}}</option>
         {% endfor %}
     </select>
+    kohdeluokka
     <select class="form-select form-select-lg mb-3" name="kohdeluokka" id="kohdeluokka" onchange="change_form_value(this)">
     </select>
-
+    valitse tiedosto
     <form action="{{ url_for('curl_put')}}" method="POST" enctype=multipart/form-data>
         <input class="form-control" type="file" id="file" name="file" aria-label="Upload" id="inputGroupFile" aria-describedby="inputGroupFileAddon">
         <input type="hidden" id="target" name="target" value={{target}}>

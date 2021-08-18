@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-4">
+                <ul style="list-style:none">
+                    <li>
+                        <button onclick="show_meta()">Metatiedot ja latauspalvelu</button>
+                    </li>
+                    <li>
+                       <button onclick="show_lahetys()">Lähetyspalvelu</button>
+                    </li>
+                    <li>
+                        <button onclick="show_yhdistely()">Tietojen yhdistely</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-8">
+                <div id="meta" style="display:block; width:80%"> 
+                    <h3>Metatiedot ja latauspalvelu</h3>
+                    <p style="text-align: justify;">
+                        Tietojen hakeminen lehdeltä löytyy metatietopalvelusta haetut nimiavaruudet, esimerkiksi: Sijainti, Varusteet tai kunto-ja-vauriotiedot. 
+                        Nimiavaruuksista pääsee selaamaan niiden sisältämiä kohdeluokkia, sekä nimikkeistöjä.
+                        <br><br>
+                        Kohdeluokat sisältävät latauspalvelusta haetut kohdeluokan objektit. Objektien sisältöä voi selata, sekä kaikki kohdeluokan objektit voidaan 
+                        ladata joko NDJSON tai CSV muodossa. Objekteja voi myös hakea tietyltä tieltä tai tieosalta.
+                        <br><br>
+                        <a href="https://ohje.velho.vayla.fi/ulkoiset-rajapinnat/ulkoiset-rajapinnat-ohje/">https://ohje.velho.vayla.fi/ulkoiset-rajapinnat/ulkoiset-rajapinnat-ohje/</a> 
+                        sivulta löytyy ohjeita kuinka latauspalvelusta voi ladata myös tiedostoja suoraan konsolin avulla.
+                    </p>
+                </div>
+                <div id="lahetys" style="display:none; width:80%">
+                    <h3>Lähetyspalvelu</h3>
+                    <p style="text-align: justify;">
+                        Tietojen päivittäminen lehdellä pystyy valitsemaan nimiavaruuden ja kohdeluokan johon lähetettävä JSON tiedosto kuuluu. Yläpalkista löytyy lähetykset sivu, josta voi 
+                        seurata tällä hetkellä käynnissä olevia lähetyksiä. 
+                        <br><br>
+                        Tietojen päivittäminen sivulta löytyy myös CSV:stä JSON:niksi muuttaja. Muuttajaan valitaan siin jonkin kohdeluokan CSV tiedosto. Jos tiedoston data on oikeanlaista se 
+                        muuntautuu JSON:niksi jonka voi lähettää.
+                    </p>
+                </div>
+                <div id="yhdistely" style="display:none; width:80%">
+                    <h3>Tietojen yhdistely</h3>
+                    <p style="text-align: justify;">
+                        Tietojen yhdistely sivulla voi ladata CSV tiedoston, jossa on yhdistely tietoja useista eri kohdeluokista. Tiedot on pilkottu tieosa kohtaisiksi. Sivulla voi myös valita
+                        mitä kohdeluokkia CSV tiedostoon otetaan mukaan.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function show_meta() {
+            document.getElementById("meta").style.display = "block";
+            document.getElementById("lahetys").style.display = "none";
+            document.getElementById("yhdistely").style.display = "none";
+        }
+        function show_lahetys() {
+            document.getElementById("meta").style.display = "none";
+            document.getElementById("lahetys").style.display = "block";
+            document.getElementById("yhdistely").style.display = "none";
+        }
+        function show_yhdistely() {
+            document.getElementById("meta").style.display = "none";
+            document.getElementById("lahetys").style.display = "none";
+            document.getElementById("yhdistely").style.display = "block";
+        }
+    </script>
+{% endblock %}

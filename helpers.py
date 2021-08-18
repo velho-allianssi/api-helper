@@ -25,6 +25,22 @@ def get_token():
         print(tokens['access_token'])
         return tokens['access_token']
 
+def login_token(client_id, client_secret): 
+        token_url = "https://auth.stg.velho.vayla.fi/oauth2/token"
+
+        test_api_url = "https://api-v2.stg.velho.vayla.fi"
+
+
+        data = {'grant_type': 'client_credentials'}
+
+        access_token_response = requests.post(token_url, data=data, verify=False, allow_redirects=False, auth=(client_id, client_secret))
+        if access_token_response.status_code == 200: 
+                tokens = json.loads(access_token_response.text)
+                return tokens['access_token']
+        else: 
+                None
+
+
 
 def api_call_data(url, data, method): 
         url = url 

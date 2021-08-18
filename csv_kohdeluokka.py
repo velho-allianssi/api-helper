@@ -19,7 +19,7 @@ def csv_write_kohdeluokka(kohdeluokka_nimi):
 
 def convert_csv_to_json(file):
     csv_content = pd.read_csv(file, sep=';', encoding="utf-8-sig", dtype='unicode')
-    data = csv_content.where(pd.notnull(csv_content), Null)
+    data = csv_content.where(pd.notnull(csv_content), None)
     reverse_normalization = df_to_formatted_json(data)
     return reverse_normalization
 
@@ -43,6 +43,7 @@ def df_to_formatted_json(df, sep="."):
                     if k not in current.keys():
                         current[k] = {}
                     current = current[k]
+
         # save
         result.append(parsed_row)
     return result

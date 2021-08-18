@@ -243,22 +243,6 @@ class CsvLinearReference:
                         'soratielk'
                 ]
                 if row1['tie'] == row2['tie'] and row1['aosa'] == row2['aosa']:
-                        '''
-                        if row1['aet'] == row2['aet']:
-                                if row1['let'] < row2['let']:
-                                        for key in keys:
-                                                if row1[key] != row2[key]:
-                                                        return None
-                                        new_row = row1
-                                        new_row['let'] = row2['let']
-                                else: 
-                                        for key in keys:
-                                                if row1[key] != row2[key]:
-                                                        return None
-                                        new_row = row1
-                                        new_row['let'] = row1['let']
-                                return new_row
-                        '''
                         if row1['let'] <= row2['let']:
                                 for key in keys:
                                         if row1[key] != row2[key]:
@@ -302,20 +286,6 @@ class CsvLinearReference:
         def to_meaningful_sets(self, rows):
                 unique_data = set()
                 for row in rows:
-                        '''
-                        current_data = (
-                                row['tie'],
-                                row['aosa'],
-                                row['tiety'],
-                                row['vluonne'],
-                                row['toiml'],
-                                row['kplk'],
-                                row['viherlk'],
-                                row['kaistapa'],
-                                row['pyplk'],
-                                row['soratielk']
-                        )  
-                        '''
                         base_data = [
                                 row['tie'],
                                 row['aosa'],
@@ -338,20 +308,6 @@ class CsvLinearReference:
                 for opt in self.options:
                         base_data.append(row[opt])
                 row_data = tuple(base_data)
-                '''
-                row_data = (
-                        row['tie'],
-                        row['aosa'],
-                        row['tiety'],
-                        row['vluonne'],
-                        row['toiml'],
-                        row['kplk'],
-                        row['viherlk'],
-                        row['kaistapa'],
-                        row['pyplk'],
-                        row['soratielk']
-                )
-                '''
                 return row_data == data
 
 
@@ -370,32 +326,40 @@ class CsvLinearReference:
 
 
         def combine_meaningful_data(self, row_list):
-
-                # rekursiivinen sisäfunktio
-                # palauttaa rivin jos sille ei löydy enää yhdisteltäviä rivejä
-                def inner_combiner(aet_row, row_list):
-                        let = aet_row['let']
-                        next_row = next((row for row in row_list if row['aet'] == let), None)
-                        if next_row: 
-                                aet_row['let'] = next_row['let']
-                                row_list.remove(next_row)
-                                aet_row = inner_combiner(aet_row, row_list)
-                        else: 
-                                return aet_row
-
                 # ensin käydään läpi aet 0 
+                row_list = sorted(row_list, key= lambda k: k['aet'])
                 aet_zero: list = list(filter(lambda row: row['aet'] == 0, row_list))
-                row_list: list = row_list
+                if aet_zero and aet_zero[0]['tie'] == 1 and aet_zero[0]['aosa'] == 3:
+                        print("-----------------ALKU----------------")
+                        print(aet_zero)
+                        print("----------------------------------------")
                 for aet_row in aet_zero:
-                        row_list.remove(aet_row) 
-                        aet_row = inner_combiner(aet_row, row_list)
-
-        
+                        row_list.remove(aet_row)
+                        while(True):
+                                let = aet_row['let'] 
+                                next_row = next((row for row in row_list if row['aet'] == let), None)
+                                if next_row: 
+                                        aet_row['let'] = next_row['let']
+                                        aet_row['pituus'] = aet_row['pituus'] + next_row['pituus']
+                                        row_list.remove(next_row)
+                                else: 
+                                        break
                 for row_left in row_list:
                         row_list.remove(row_left)
-                        row_left = inner_combiner(row_left, row_list)
+                        while(True): 
+                                let = row_left['let'] 
+                                next_row = next((row for row in row_list if row['aet'] == let), None)
+                                if next_row: 
+                                        row_left['let'] = next_row['let']
+                                        row_left['pituus'] = row_left['pituus'] + next_row['pituus']
+                                        row_list.remove(next_row)
+                                else: 
+                                        break
                         aet_zero.append(row_left)
-                
+
+                if aet_zero and aet_zero[0]['tie'] == 1 and aet_zero[0]['aosa'] == 3:
+                        print(aet_zero)
+                        print("-----------------LOPPU---------------")
                 return aet_zero
 
 
@@ -459,15 +423,19 @@ class CsvLinearReference:
                         start = time.time()
                         y = list(map(lambda meaningful_data: list(filter(lambda row: self.filter_check_meaningful_data(row, meaningful_data), grouped_rivit[meaningful_data[0]])),unique_data))
                         sorted_y = sorted(y, key=lambda k: k[0]['tie'])
+                        results = []
+                        
                         for x in sorted_y:
-                                if len(x) > 1: 
-                                        x = self.combine_meaningful_data(x)
+                                if len(x) > 1:
+                                        results.append(self.combine_meaningful_data(x))
+                                else: 
+                                        results.append(x)
 
                         end = time.time()
                         print(end - start)
-                        print(sorted_y[0])
+                        #results = sorted(results, key=lambda k: )
 
-                        for record in sorted_y:
+                        for record in results:
                                 for record2 in record:
                                         writer.writerow(record2)
 

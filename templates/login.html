@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if message %}
+        {{message}}
+    {% endif %}
+    <form action="{{ url_for('login')}}" method="POST">
+        <input type="text" id="id" name="id">
+        <input type="text" id="secret" name="secret">
+        <input type="submit">
+    </form>
+{% endblock %}

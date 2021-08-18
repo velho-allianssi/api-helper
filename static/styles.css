@@ -137,9 +137,6 @@ ul.ks-cboxtags li input[type="checkbox"]:focus + label {
 .container_csv {
     max-width: 640px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 13px;
-    border: 2px solid lightblue;
-    border-radius: 2%;
-    padding: 5%;
+    font-size: 16px;
 
 }

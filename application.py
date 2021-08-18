@@ -1,9 +1,8 @@
 from typing import Dict
-from flask import Flask, render_template, session, request, redirect, url_for
+from flask import Flask, render_template, session, request, redirect, url_for, flash
 from flask.helpers import send_file
 import requests, json, ndjson
-from helpers import get_token, group_by_tie, kohdeluokka_dict, meta_tiedot, api_call_data_kohdeluokka, finder, grouped_by_tie, split_at_parts
-from csv_urakat import urakat_csv_encoded
+from helpers import get_token, group_by_tie, kohdeluokka_dict, meta_tiedot, api_call_data_kohdeluokka, login_token
 from csv_homogenisoitu import CsvLinearReference
 from collections import OrderedDict
 from csv_kohdeluokka import csv_write_kohdeluokka, convert_csv_to_json
@@ -12,22 +11,36 @@ from csv_kohdeluokka import csv_write_kohdeluokka, convert_csv_to_json
 # targetit -> kohdeluokaksi
 
 app = Flask(__name__)
-
+app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
 dataset = [ ]
 
-@app.route('/alternative')
-def alt(): 
-    return render_template('index_alt.html')
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == "POST":
+        api_id = request.form['id']
+        api_secret = request.form['secret']
+        token = login_token(api_id, api_secret)
+        if token:
+            # Tärkeä
+            session['token'] = token      
+            return render_template('index.html')
+        else:
+            return render_template('login.html', message="Invalid id or secret")
+    else: 
+        return render_template('login.html')
+
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-
 # Hakee kohdeluokkien nimet metatietopalvelusta
 @app.route('/meta')
 def meta(): 
+    print(request.cookies.get('id'))
     token_url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/nimiavaruudet"
+    #auth = 'Bearer ' + str(get_token(request.cookies.get('id'), request.cookies.get('secret')))
     auth = 'Bearer ' + str(get_token())
     data = {'accept': 'application/json'}
     api_call_headers = {'Authorization': auth}
@@ -201,6 +214,7 @@ def laheta():
     vaihtoehdot.popitem()
     return render_template('laheta.html', data=vaihtoehdot)
 
+
 # Hakee kaikki meneillään olevat lähetykset
 @app.route('/lahetykset')
 def lahetykset():
@@ -289,11 +303,16 @@ def csv_to_json():
         files = request.files['file']
         filename = files.filename.split(".")[0] + ".json"
         print(filename.split(".")[0])
-        converted = convert_csv_to_json(files)
-        #f = open(filename + ".json", "w")
-        #f.write(converted)
-        #f.close()
+        try: 
+            converted = convert_csv_to_json(files)
 
-        with open(filename, 'w') as f:
-            json.dump(converted, f)
-        return send_file(filename, as_attachment=True, attachment_filename=filename)
+            with open(filename, 'w') as f:
+                json.dump(converted, f)
+            return send_file(filename, as_attachment=True, attachment_filename=filename)
+        except: 
+            return "Ongelma muunnoksessa"
+
+
+@app.route('/info')
+def info():
+    return render_template('info.html')
