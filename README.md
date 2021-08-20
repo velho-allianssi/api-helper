@@ -10,9 +10,6 @@
   - (cd back to main folder: cd .. -> cd ..)
 - Install required packages:
   - pip install -r requirements.txt
-- Create .env file to main folder that contains:
-  - CLIENT_ID = 'client_id_here'
-  - CLIENT_SECRET = 'client_secret_here'
 - Run commands:
   - set flask_app=application.py (set flask_app on windows, export flask_app on others)
   - flask run
