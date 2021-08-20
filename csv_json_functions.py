@@ -7,8 +7,8 @@ import json
 
 # pandas group by googleta
 
-def csv_write_kohdeluokka(kohdeluokka_nimi):
-    content, url = kohdeluokka_dict(kohdeluokka_nimi)
+def csv_write_kohdeluokka(kohdeluokka_nimi, token):
+    content, url = kohdeluokka_dict(kohdeluokka_nimi, token)
     filename = kohdeluokka_nimi.split("_")[2] + ".csv"
     data = pd.json_normalize(content)
     #data = json_to_dataframe(content)

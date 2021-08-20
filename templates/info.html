@@ -3,15 +3,15 @@
     <div class="container">
         <div class="row">
             <div class="col-4">
-                <ul style="list-style:none">
-                    <li>
-                        <button onclick="show_meta()">Metatiedot ja latauspalvelu</button>
+                <ul class="list-group" style="list-style:none">
+                    <li class="list-group-item" onclick="show_meta()" id="list_meta">
+                       <h4>Metatiedot ja latauspalvelu</h4>
                     </li>
-                    <li>
-                       <button onclick="show_lahetys()">Lähetyspalvelu</button>
+                    <li class="list-group-item" onclick="show_lahetys()" id="lahetys_meta">
+                       <h4>Lähetyspalvelu</h4>
                     </li>
-                    <li>
-                        <button onclick="show_yhdistely()">Tietojen yhdistely</button>
+                    <li class="list-group-item" onclick="show_yhdistely()" id="yhdistely_meta">
+                        <h4>Tietojen yhdistely</h4>
                     </li>
                 </ul>
             </div>
@@ -51,6 +51,7 @@
     </div>
     <script>
         function show_meta() {
+
             document.getElementById("meta").style.display = "block";
             document.getElementById("lahetys").style.display = "none";
             document.getElementById("yhdistely").style.display = "none";

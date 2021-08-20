@@ -1,7 +1,7 @@
 import csv
 import time, datetime
 from datetime import datetime
-from helpers import grouped_by_tie, get_token,  finder_encoded, split_at_parts
+from helpers import grouped_by_tie, finder_encoded, split_at_parts
 import sys
 import copy
 import pandas as pd
@@ -9,8 +9,8 @@ from iteration_utilities import unique_everseen
 # Muuttujien nimet selkeämmäksi esim enkoodattu_alku => enkoodattu_alku
 
 class CsvLinearReference:
-        def __init__(self, options):
-                auth_token = str(get_token())
+        def __init__(self, options, token):
+                auth_token = token
                 self.kohdeluokat = {
                                 'tieosat'       : grouped_by_tie("kohdeluokka_sijainti_tieosa", auth_token),
                                 'kplk'          : grouped_by_tie("kohdeluokka_kunnossapitoluokitukset_talvihoitoluokka", auth_token),
@@ -338,6 +338,8 @@ class CsvLinearReference:
                         while(True):
                                 let = aet_row['let'] 
                                 next_row = next((row for row in row_list if row['aet'] == let), None)
+                                print("Alku")
+                                print()
                                 if next_row: 
                                         aet_row['let'] = next_row['let']
                                         aet_row['pituus'] = aet_row['pituus'] + next_row['pituus']

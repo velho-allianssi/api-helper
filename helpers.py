@@ -1,36 +1,16 @@
 import requests, json, ndjson
-import csv
 import os
-import time, datetime
-from datetime import datetime
-import sys
 import copy
+import sys
 
 # Finder ja apufunktiot omaan tiedostoon
 
 # Hakee tokenin jota hyödynnetään muiden funktioiden get ja post pyyntöjen headerin auth osiossa
-def get_token(): 
-        token_url = "https://auth.stg.velho.vayla.fi/oauth2/token"
 
-        test_api_url = "https://api-v2.stg.velho.vayla.fi"
-
-        #hae env tiedostosta
-        client_id = os.getenv("CLIENT_ID")
-        client_secret = os.getenv("CLIENT_SECRET")
-
-        data = {'grant_type': 'client_credentials'}
-
-        access_token_response = requests.post(token_url, data=data, verify=False, allow_redirects=False, auth=(client_id, client_secret))
-        tokens = json.loads(access_token_response.text)
-        print(tokens['access_token'])
-        return tokens['access_token']
 
 def login_token(client_id, client_secret): 
         token_url = "https://auth.stg.velho.vayla.fi/oauth2/token"
-
         test_api_url = "https://api-v2.stg.velho.vayla.fi"
-
-
         data = {'grant_type': 'client_credentials'}
 
         access_token_response = requests.post(token_url, data=data, verify=False, allow_redirects=False, auth=(client_id, client_secret))
@@ -41,23 +21,10 @@ def login_token(client_id, client_secret):
                 None
 
 
-
-def api_call_data(url, data, method): 
-        url = url 
-        url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/metatiedot"
-        auth = 'Bearer ' + str(get_token())
-
-        data = '[ "' + data + '" ]' 
-        api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
-        if method == 'post':
-                return requests.post(url, headers=api_call_headers, data=data) 
-        else: 
-                return requests.get(url, headers=api_call_headers, data=data) 
-
 def api_call_data_kohdeluokka(kohdeluokka, token): 
         parts = kohdeluokka.split("_") 
         url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json"
-        auth = 'Bearer ' + str(get_token()) if not token else 'Bearer ' + token
+        auth = 'Bearer ' + token
         api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
         return requests.get(url, headers=api_call_headers), url
 
@@ -65,8 +32,8 @@ def api_call_data_kohdeluokka(kohdeluokka, token):
 # Palauttaa listan tietyn kohdeluokan objecteista, sekä hakemiseen käytetyn url:n
 # target tulee muodossa kohdeluokka_nimiavaruus_kohdeluokan_nimi
 # esim. kohdeluokka_varusteet_aidat tai kohdeluokka_urakka_palvelusopimus 
-def kohdeluokka_dict(kohdeluokka):
-        api_call_response, url = api_call_data_kohdeluokka(kohdeluokka, None)
+def kohdeluokka_dict(kohdeluokka, token):
+        api_call_response, url = api_call_data_kohdeluokka(kohdeluokka, token)
         try: 
                 #purkaa ndjsonin python listaksi
                 content = api_call_response.json(cls=ndjson.Decoder)
@@ -90,9 +57,8 @@ def kohdeluokka_dict_same_token(kohdeluokka, token):
         return content, url 
 
 # Hakee metatietopalvelusta kohdeluokkien nimet ja nimikkeistöt
-def meta_tiedot(class_name): 
+def meta_tiedot(class_name, auth): 
         url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/metatiedot"
-        auth = 'Bearer ' + str(get_token())
 
         data = '[ "' + class_name + '" ]'
         api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}

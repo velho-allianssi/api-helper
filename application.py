@@ -1,19 +1,32 @@
 from typing import Dict
+from functools import wraps
 from flask import Flask, render_template, session, request, redirect, url_for, flash
 from flask.helpers import send_file
 import requests, json, ndjson
-from helpers import get_token, group_by_tie, kohdeluokka_dict, meta_tiedot, api_call_data_kohdeluokka, login_token
+from helpers import group_by_tie, kohdeluokka_dict, meta_tiedot, api_call_data_kohdeluokka, login_token
 from csv_homogenisoitu import CsvLinearReference
 from collections import OrderedDict
-from csv_kohdeluokka import csv_write_kohdeluokka, convert_csv_to_json
-
-
-# targetit -> kohdeluokaksi
+from csv_json_functions import csv_write_kohdeluokka, convert_csv_to_json
+import datetime
+import sys
+import flask_login
 
 app = Flask(__name__)
+# vaihtuu
 app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
 dataset = [ ]
 
+
+def token_required(f): 
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try: 
+            token = session['token']
+        except: 
+            return redirect(url_for('login', message="Valid token is required, please enter api information"))
+        return f(*args, **kwargs)
+    return decorated_function
+        
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == "POST":
@@ -22,26 +35,35 @@ def login():
         token = login_token(api_id, api_secret)
         if token:
             # Tärkeä
+            session.permanent = True
+            app.permanent_session_lifetime = datetime.timedelta(minutes=60)
+            session.modified = True
             session['token'] = token      
             return render_template('index.html')
         else:
             return render_template('login.html', message="Invalid id or secret")
-    else: 
-        return render_template('login.html')
+    else:
+        try: 
+            return render_template('login.html', message=request.args .get('message'))
+        except:
+            return render_template('login.html')
 
 
 
 @app.route('/')
+@token_required
 def index():
     return render_template('index.html')
 
 # Hakee kohdeluokkien nimet metatietopalvelusta
 @app.route('/meta')
+@token_required
 def meta(): 
-    print(request.cookies.get('id'))
     token_url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/nimiavaruudet"
-    #auth = 'Bearer ' + str(get_token(request.cookies.get('id'), request.cookies.get('secret')))
-    auth = 'Bearer ' + str(get_token())
+    try: 
+        auth = 'Bearer ' + str(session['token'])
+    except: 
+        return redirect(url_for('login', message="Invalid login"))
     data = {'accept': 'application/json'}
     api_call_headers = {'Authorization': auth}
     api_call_response = requests.get(token_url, headers=api_call_headers, data=data)
@@ -70,9 +92,13 @@ def kohdeluokka_metatiedot_schemat(auth, kohdeluokka):
 # Hakee kohdeluokan jsonin metatietopalvelusta
 # Hakee jsonista schemat
 @app.route('/meta/<kohdeluokka>')
+@token_required
 def kohdeluokka_metatiedot(kohdeluokka):
     url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/metatiedot"
-    auth = 'Bearer ' + str(get_token())
+    try: 
+        auth = 'Bearer ' + str(session['token'])
+    except: 
+        return redirect(url_for('login', message="Your token has expired"))
 
     data = '[ "' + kohdeluokka + '" ]'
     api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
@@ -100,12 +126,18 @@ def kohdeluokka_metatiedot(kohdeluokka):
 
 # Hakee latauspalvelusta tietyn kohdeluokan objectit
 @app.route('/<class_name>/<target>', methods = ['GET', 'POST'])
+@token_required
 def kohdeluokka_latauspalvelu(class_name, target):
     kohdeluokka = class_name
     parts = target.split("_")
+    try: 
+        auth = 'Bearer ' + str(session['token'])
+        token = session['token']
+    except: 
+        return redirect(url_for('login', message="Your token has expired"))
     filters = {}
     if parts[0] == "kohdeluokka": 
-        content, path = kohdeluokka_dict(target)
+        content, path = kohdeluokka_dict(target, token)
         if request.method == 'POST':
             tie = request.form['road']
             grouped = group_by_tie(content)
@@ -135,7 +167,7 @@ def kohdeluokka_latauspalvelu(class_name, target):
             return render_template('kohdeluokka_latauspalvelu.html', data=as_dict, target=target, path=path, filters=filters)
 
     else:
-        data = meta_tiedot(kohdeluokka)
+        data = meta_tiedot(kohdeluokka, auth)
         try: 
             return render_template('kohdeluokka_latauspalvelu.html', data=data[target], target=target, filters=filters)
         except: 
@@ -172,8 +204,13 @@ def tieosa_haku(tieosat, aosa, losa):
 
 # Lataa latauspalvelusta tietyn kohdeluokan ndjsonin
 @app.route('/download/<kohdeluokka>')
+@token_required
 def download_ndjson(kohdeluokka):
-    api_response, url = api_call_data_kohdeluokka(kohdeluokka, None)
+    try: 
+        token = session['token']
+    except: 
+        return redirect(url_for('login', message="Your token has expired"))
+    api_response, url = api_call_data_kohdeluokka(kohdeluokka, token)
     content = api_response.json(cls=ndjson.Decoder)
     filename = kohdeluokka.split("_")[2] + ".json"
     #open(filename, 'wb').write(content)
@@ -185,9 +222,13 @@ def download_ndjson(kohdeluokka):
 
 # Lataa metatieto palvelusta tietyn kohdeluokan metatiedot
 @app.route('/download/meta/<kohdeluokka>')
+@token_required
 def download_meta_json(kohdeluokka):
     url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/metatiedot"
-    auth = 'Bearer ' + str(get_token())
+    try: 
+        auth = 'Bearer ' + str(session['token'])
+    except: 
+        return redirect(url_for('login', message="Your token has expired"))
 
     data = '[ "' + kohdeluokka + '" ]'
     api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
@@ -200,8 +241,12 @@ def download_meta_json(kohdeluokka):
     return send_file(filename, as_attachment=True)
 
 @app.route('/laheta')
+@token_required
 def laheta():
-    auth = 'Bearer ' + str(get_token())
+    try: 
+        auth = 'Bearer ' + str(session['token'])
+    except: 
+        return redirect(url_for('login', message="Your token has expired"))
     vaihtoehdot = {}
     token_url = "https://api-v2.stg.velho.vayla.fi/metatietopalvelu/api/v2/nimiavaruudet"
     data = {'accept': 'application/json'}
@@ -217,8 +262,12 @@ def laheta():
 
 # Hakee kaikki meneillään olevat lähetykset
 @app.route('/lahetykset')
+@token_required
 def lahetykset():
-    auth = 'Bearer ' + str(get_token())
+    try: 
+        auth = 'Bearer ' + str(session['token'])
+    except: 
+        return redirect(url_for('login', message="Your token has expired"))
     headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     url = "https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/tunnisteet" 
     response = requests.get(url, headers=headers)
@@ -234,8 +283,12 @@ def lahetykset():
 
 # Tarkistaa tietyn lähetyksen statuksen
 @app.route('/check_status/<tunniste>')
+@token_required
 def check_status(tunniste):
-    auth = 'Bearer ' + str(get_token())
+    try: 
+        auth = 'Bearer ' + str(session['token'])
+    except: 
+        return redirect(url_for('login', message="Your token has expired"))
     headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     url = "https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/tila/" + tunniste
     response = requests.get(url, headers=headers)
@@ -243,13 +296,17 @@ def check_status(tunniste):
 
 # Lähettää tiedoston lähetyspalveluun
 @app.route('/put', methods = ['POST'])
+@token_required
 def curl_put():
     if request.method == 'POST':
         target = request.form['target'] 
         parts = target.split("_") 
 
         url     = 'https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/laheta'
-        auth    = 'Bearer ' + str(get_token())
+        try: 
+            auth = 'Bearer ' + str(session['token'])
+        except: 
+            return redirect(url_for('login', message="Your token has expired"))
         headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
         data    = {"kohdeluokka": parts[1] + "/" + parts[2]}
 
@@ -269,21 +326,29 @@ def curl_put():
 
 # Yhdistelee useiden kohdeluokkien tietoja yhdeksi csv:ksi
 @app.route('/csv/tieosat', methods = ['POST'])
+@token_required
 def tieosat_csv():
     if request.method == 'POST':
         options_json = request.form['selected_options']
         options = json.loads(options_json)
         options.reverse()
-        obj = CsvLinearReference(options)
+        try: 
+            token = session['token']
+        except: 
+            return redirect(url_for('login', message="Your token has expired"))
+        obj = CsvLinearReference(options, token)
         filename = obj.write_and_run()
         return send_file(filename, as_attachment=True)
 
 @app.route('/<kohdeluokka>/csv')
+@token_required
 def kohdeluokka_csv(kohdeluokka):
-    file = csv_write_kohdeluokka(kohdeluokka)
+    token = session['token']
+    file = csv_write_kohdeluokka(kohdeluokka, token)
     return send_file(file, as_attachment=True)
 
 @app.route("/csv")
+@token_required
 def csv_options():
     options = {
         'vluonne'       : 'Väylän-luonne',
@@ -298,6 +363,7 @@ def csv_options():
 
 
 @app.route('/convert', methods = ['POST'])
+@token_required
 def csv_to_json():
     if request.method == 'POST':
         files = request.files['file']
@@ -314,5 +380,6 @@ def csv_to_json():
 
 
 @app.route('/info')
+@token_required
 def info():
     return render_template('info.html')
