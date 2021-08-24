@@ -11,7 +11,7 @@
 - Install required packages:
   - pip install -r requirements.txt
 - Run commands:
-  - set flask_app=application.py (set flask_app on windows, export flask_app on others)
+  - set flask_app=application.py (set flask_app on windows, export FLASK_APP=application.py on others)
   - flask run
 - App can be found on browser at localhost:5000
 
