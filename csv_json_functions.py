@@ -1,4 +1,4 @@
-from helpers import kohdeluokka_dict
+from application import kohdeluokka_dict
 from copy import deepcopy
 import csv
 import os, sys, getopt

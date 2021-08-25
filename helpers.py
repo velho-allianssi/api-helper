@@ -20,7 +20,6 @@ def login_token(client_id, client_secret):
         else: 
                 None
 
-
 def api_call_data_kohdeluokka(kohdeluokka, token): 
         parts = kohdeluokka.split("_") 
         url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + ".json"
@@ -28,22 +27,6 @@ def api_call_data_kohdeluokka(kohdeluokka, token):
         api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
         return requests.get(url, headers=api_call_headers), url
 
-
-# Palauttaa listan tietyn kohdeluokan objecteista, sekä hakemiseen käytetyn url:n
-# target tulee muodossa kohdeluokka_nimiavaruus_kohdeluokan_nimi
-# esim. kohdeluokka_varusteet_aidat tai kohdeluokka_urakka_palvelusopimus 
-def kohdeluokka_dict(kohdeluokka, token):
-        api_call_response, url = api_call_data_kohdeluokka(kohdeluokka, token)
-        try: 
-                #purkaa ndjsonin python listaksi
-                content = api_call_response.json(cls=ndjson.Decoder)
-                #poistaa latauspalvelun ensimmäisen meta rivin
-                content = content[1:]
-        except: 
-                #jos api ei palauta ndjson tiedostoa, näytetään pyynnön mukana tullut teksti
-                content = api_call_response.text
-
-        return content, url 
 
 # Sama kuin kohdeluokka_dict mutta ei hae uutta tokenia
 def kohdeluokka_dict_same_token(kohdeluokka, token):

@@ -338,8 +338,6 @@ class CsvLinearReference:
                         while(True):
                                 let = aet_row['let'] 
                                 next_row = next((row for row in row_list if row['aet'] == let), None)
-                                print("Alku")
-                                print()
                                 if next_row: 
                                         aet_row['let'] = next_row['let']
                                         aet_row['pituus'] = aet_row['pituus'] + next_row['pituus']

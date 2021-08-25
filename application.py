@@ -1,21 +1,39 @@
 from typing import Dict
 from functools import wraps
-from flask import Flask, render_template, session, request, redirect, url_for, flash
+from flask import Flask, render_template, session, request, redirect, url_for, flash, g
 from flask.helpers import send_file
 import requests, json, ndjson
-from helpers import group_by_tie, kohdeluokka_dict, meta_tiedot, api_call_data_kohdeluokka, login_token
+from helpers import group_by_tie, meta_tiedot, api_call_data_kohdeluokka, login_token
 from csv_homogenisoitu import CsvLinearReference
 from collections import OrderedDict
 from csv_json_functions import csv_write_kohdeluokka, convert_csv_to_json
 import datetime
 import sys
 import flask_login
+import copy
 
 app = Flask(__name__)
 # vaihtuu
 app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
 dataset = [ ]
 
+def kohdeluokka_dict(kohdeluokka, token):
+        api_call_response, url = api_call_data_kohdeluokka(kohdeluokka, token)
+        if api_call_response.status_code == 401:
+            session.pop('token')
+            return redirect(url_for('login', message="Token expired"))
+        try: 
+                #purkaa ndjsonin python listaksi
+                #kutsuu json.loads(f.read()) mikä dumppaa koko jsonin muistiin 
+                #MUUTA!!
+                content = api_call_response.json(cls=ndjson.Decoder)
+                #poistaa latauspalvelun ensimmäisen meta rivin
+                content = content[1:]
+        except: 
+                #jos api ei palauta ndjson tiedostoa, näytetään pyynnön mukana tullut teksti
+                content = api_call_response.text
+
+        return content, url 
 
 def token_required(f): 
     @wraps(f)
@@ -37,8 +55,7 @@ def login():
             # Tärkeä
             session.permanent = True
             app.permanent_session_lifetime = datetime.timedelta(minutes=60)
-            session.modified = True
-            session['token'] = token      
+            session['token'] = token     
             return render_template('index.html')
         else:
             return render_template('login.html', message="Invalid id or secret")
@@ -67,6 +84,9 @@ def meta():
     data = {'accept': 'application/json'}
     api_call_headers = {'Authorization': auth}
     api_call_response = requests.get(token_url, headers=api_call_headers, data=data)
+    if api_call_response.status_code == 401:
+        session.pop('token')
+        return redirect(url_for('login', message="Token expired"))
     try: 
         return render_template('nimiavaruudet.html', data=sorted(api_call_response.json()))
     except: 
@@ -78,7 +98,9 @@ def kohdeluokka_metatiedot_schemat(auth, kohdeluokka):
     data = '[ "' + kohdeluokka + '" ]'
     api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     api_call_response = requests.post(url, headers=api_call_headers, data=data)
-
+    if api_call_response.status_code == 401:
+        session.pop('token')
+        return redirect(url_for('login', message="Token expired"))
     schemas = api_call_response.json()["components"]["schemas"]
     schema_list = list(schemas)
     filtered_list = []
@@ -103,7 +125,9 @@ def kohdeluokka_metatiedot(kohdeluokka):
     data = '[ "' + kohdeluokka + '" ]'
     api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     api_call_response = requests.post(url, headers=api_call_headers, data=data)
-
+    if api_call_response.status_code == 401:
+        session.pop('token')
+        return redirect(url_for('login', message="Token expired"))
     schemas = api_call_response.json()["components"]["schemas"]
     schema_list = list(schemas)
     filtered_list = []
@@ -157,14 +181,16 @@ def kohdeluokka_latauspalvelu(class_name, target):
                         'aosa' : aosa,
                         'losa' : losa
                     }
-
-        if type(content) is str: 
-            return content
-        else: 
-            as_dict = {}
-            for d in content:
-                as_dict[d["oid"]] = d
-            return render_template('kohdeluokka_latauspalvelu.html', data=as_dict, target=target, path=path, filters=filters)
+        else:
+            if type(content) is str: 
+                return content
+            else: 
+                print("here")
+                first_ten = content[:25]
+                as_dict = {}
+                for d in first_ten:
+                    as_dict[d["oid"]] = d
+                return render_template('kohdeluokka_latauspalvelu.html', data=as_dict, target=target, path=path, filters=filters)
 
     else:
         data = meta_tiedot(kohdeluokka, auth)
@@ -211,6 +237,9 @@ def download_ndjson(kohdeluokka):
     except: 
         return redirect(url_for('login', message="Your token has expired"))
     api_response, url = api_call_data_kohdeluokka(kohdeluokka, token)
+    if api_response.status_code == 401:
+        session.pop('token')
+        return redirect(url_for('login', message="Token expired"))
     content = api_response.json(cls=ndjson.Decoder)
     filename = kohdeluokka.split("_")[2] + ".json"
     #open(filename, 'wb').write(content)
@@ -233,6 +262,9 @@ def download_meta_json(kohdeluokka):
     data = '[ "' + kohdeluokka + '" ]'
     api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     api_call_response = requests.post(url, headers=api_call_headers, data=data)
+    if api_call_response.status_code == 401:
+        session.pop('token')
+        return redirect(url_for('login', message="Token expired"))
     content = api_call_response.json(cls=ndjson.Decoder)
     filename = filename = "meta_" + kohdeluokka + ".json"
     with open(filename, 'w') as f:
@@ -252,6 +284,9 @@ def laheta():
     data = {'accept': 'application/json'}
     api_call_headers = {'Authorization': auth}
     api_call_response = requests.get(token_url, headers=api_call_headers, data=data)
+    if api_call_response.status_code == 401:
+        session.pop('token')
+        return redirect(url_for('login', message="Token expired"))
     nimiavaruudet = api_call_response.json()
     for nimi in nimiavaruudet: 
         kohdeluokat = kohdeluokka_metatiedot_schemat(auth, nimi)
@@ -271,7 +306,9 @@ def lahetykset():
     headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     url = "https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/tunnisteet" 
     response = requests.get(url, headers=headers)
-    
+    if response.status_code == 401:
+        session.pop('token')
+        return redirect(url_for('login', message="Token expired"))
     lahetys_lista = response.json()
     as_dict = {}
     for lahetys in lahetys_lista: 
@@ -292,6 +329,9 @@ def check_status(tunniste):
     headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
     url = "https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/tila/" + tunniste
     response = requests.get(url, headers=headers)
+    if response.status_code == 401:
+        session.pop('token')
+        return redirect(url_for('login', message="Token expired"))
     return render_template('upload_check.html', data=response.json(), lahetystunniste=tunniste)
 
 # Lähettää tiedoston lähetyspalveluun
@@ -311,6 +351,10 @@ def curl_put():
         data    = {"kohdeluokka": parts[1] + "/" + parts[2]}
 
         response = requests.post(url, headers=headers, data=json.dumps(data))
+        if response.status_code == 401:
+            session.pop('token')
+            return redirect(url_for('login', message="Token expired"))
+
         response_json = response.json()
         upload_url = response_json["url"]
 
@@ -343,7 +387,10 @@ def tieosat_csv():
 @app.route('/<kohdeluokka>/csv')
 @token_required
 def kohdeluokka_csv(kohdeluokka):
-    token = session['token']
+    try: 
+        token = session['token']
+    except: 
+        return redirect(url_for('login', message="Valid token is required, please enter api information"))
     file = csv_write_kohdeluokka(kohdeluokka, token)
     return send_file(file, as_attachment=True)
 
