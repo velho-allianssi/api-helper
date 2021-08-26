@@ -1,37 +1,42 @@
 from typing import Dict
 from functools import wraps
-from flask import Flask, render_template, session, request, redirect, url_for, flash, g
+from flask import Flask, render_template, session, request, redirect, url_for
 from flask.helpers import send_file
 import requests, json, ndjson
 from helpers import group_by_tie, meta_tiedot, api_call_data_kohdeluokka, login_token
 from csv_homogenisoitu import CsvLinearReference
 from collections import OrderedDict
 from csv_json_functions import csv_write_kohdeluokka, convert_csv_to_json
-import datetime
-import sys
-import flask_login
-import copy
+import datetime, time
 
 app = Flask(__name__)
 # vaihtuu
 app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
 dataset = [ ]
 
+
 def kohdeluokka_dict(kohdeluokka, token):
         api_call_response, url = api_call_data_kohdeluokka(kohdeluokka, token)
         if api_call_response.status_code == 401:
             session.pop('token')
             return redirect(url_for('login', message="Token expired"))
+        
+        #purkaa ndjsonin python listaksi
+        #kutsuu json.loads(f.read()) mikä dumppaa koko jsonin muistiin 
+        #Ehkä ijson parempi? 
+        
+        #data = api_call_response
+        #jsonobjs = ijson.items(api_call_response.content, 'item')
+        #jsons = (o for o in jsonobjs)
+
+
         try: 
-                #purkaa ndjsonin python listaksi
-                #kutsuu json.loads(f.read()) mikä dumppaa koko jsonin muistiin 
-                #MUUTA!!
-                content = api_call_response.json(cls=ndjson.Decoder)
-                #poistaa latauspalvelun ensimmäisen meta rivin
-                content = content[1:]
-        except: 
-                #jos api ei palauta ndjson tiedostoa, näytetään pyynnön mukana tullut teksti
-                content = api_call_response.text
+            content = api_call_response.json(cls=ndjson.Decoder)
+            #poistaa latauspalvelun ensimmäisen meta rivin
+            content = content[1:]
+        except:
+            #jos api ei palauta ndjson tiedostoa, näytetään pyynnön mukana tullut teksti
+            content = api_call_response.text
 
         return content, url 
 
@@ -185,7 +190,6 @@ def kohdeluokka_latauspalvelu(class_name, target):
             if type(content) is str: 
                 return content
             else: 
-                print("here")
                 first_ten = content[:25]
                 as_dict = {}
                 for d in first_ten:
@@ -391,7 +395,8 @@ def kohdeluokka_csv(kohdeluokka):
         token = session['token']
     except: 
         return redirect(url_for('login', message="Valid token is required, please enter api information"))
-    file = csv_write_kohdeluokka(kohdeluokka, token)
+    content, url = kohdeluokka_dict(kohdeluokka, token)
+    file = csv_write_kohdeluokka(content, kohdeluokka)
     return send_file(file, as_attachment=True)
 
 @app.route("/csv")
@@ -415,7 +420,6 @@ def csv_to_json():
     if request.method == 'POST':
         files = request.files['file']
         filename = files.filename.split(".")[0] + ".json"
-        print(filename.split(".")[0])
         try: 
             converted = convert_csv_to_json(files)
 

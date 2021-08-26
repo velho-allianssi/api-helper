@@ -1,4 +1,4 @@
-from application import kohdeluokka_dict
+
 from copy import deepcopy
 import csv
 import os, sys, getopt
@@ -7,8 +7,7 @@ import json
 
 # pandas group by googleta
 
-def csv_write_kohdeluokka(kohdeluokka_nimi, token):
-    content, url = kohdeluokka_dict(kohdeluokka_nimi, token)
+def csv_write_kohdeluokka(content, kohdeluokka_nimi):
     filename = kohdeluokka_nimi.split("_")[2] + ".csv"
     data = pd.json_normalize(content)
     #data = json_to_dataframe(content)
