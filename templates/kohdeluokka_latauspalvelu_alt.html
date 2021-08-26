@@ -1,0 +1,20 @@
+
+{% extends "base.html" %}
+
+
+
+{% block content %}
+<div class="row">
+    <div class="col">
+        <h4>Kohdeluokat</h4>
+        <ul class="list-group" style="list-style: none;">
+            {% for key in data %}
+                <li>
+                    {% set combined = "_".join(key.split('/')) %}
+                    <a class="list-group-item list-group-item-action" href="/mittaustiedot_alt/{{combined}}">{{key}}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

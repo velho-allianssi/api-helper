@@ -11,7 +11,7 @@ def csv_write_kohdeluokka(content, kohdeluokka_nimi):
     filename = kohdeluokka_nimi.split("_")[2] + ".csv"
     data = pd.json_normalize(content)
     #data = json_to_dataframe(content)
-    data = data.reindex(sorted(data.columns), axis=1)
+    data = data.reindex(data.columns, axis=1)
     data.to_csv(filename, encoding = 'utf-8-sig', sep = ";", index=False)
     return filename
    

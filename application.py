@@ -56,11 +56,13 @@ def login():
         api_id = request.form['id']
         api_secret = request.form['secret']
         token = login_token(api_id, api_secret)
+        print(token)
         if token:
             # Tärkeä
             session.permanent = True
             app.permanent_session_lifetime = datetime.timedelta(minutes=60)
-            session['token'] = token     
+            session['token'] = token
+            session['max-length'] = datetime.datetime.now() + datetime.timedelta(hours=1)
             return render_template('index.html')
         else:
             return render_template('login.html', message="Invalid id or secret")
@@ -157,51 +159,87 @@ def kohdeluokka_metatiedot(kohdeluokka):
 @app.route('/<class_name>/<target>', methods = ['GET', 'POST'])
 @token_required
 def kohdeluokka_latauspalvelu(class_name, target):
-    kohdeluokka = class_name
-    parts = target.split("_")
+    kohdeluokka = target
+    parts = kohdeluokka.split("_") 
     try: 
-        auth = 'Bearer ' + str(session['token'])
-        token = session['token']
+            auth = 'Bearer ' + str(session['token'])
+            token = session['token']
     except: 
         return redirect(url_for('login', message="Your token has expired"))
-    filters = {}
-    if parts[0] == "kohdeluokka": 
-        content, path = kohdeluokka_dict(target, token)
-        if request.method == 'POST':
-            tie = request.form['road']
-            grouped = group_by_tie(content)
-            if int(tie) in grouped: 
-                content = grouped[int(tie)]
-                aosa = request.form['aosa']
-                losa = request.form['losa']
-
-                if aosa and losa:
-                    aosa = int(aosa)
-                    losa = int(losa)
-                    finds = tieosa_haku(content, aosa, losa)
-                    content = finds
-
-                    filters = {
-                        'tie'  : tie,
-                        'aosa' : aosa,
-                        'losa' : losa
-                    }
-        else:
-            if type(content) is str: 
-                return content
-            else: 
-                first_ten = content[:25]
-                as_dict = {}
-                for d in first_ten:
-                    as_dict[d["oid"]] = d
-                return render_template('kohdeluokka_latauspalvelu.html', data=as_dict, target=target, path=path, filters=filters)
-
+        
+    # Osa kohdeluokista jakautuu useaan tiedostoon, koska yhtenä tiedostona niistä tulisi liian suuria. 
+    # Tällöin kohdeluokan nimi toimii hakemistona, ja data on (yleensä tieosan ja kaistan perusteella) pilkottuina tiedostoina sen alaisuudessa.
+    if "palvelutason-mittaus" in kohdeluokka or "topologia" in kohdeluokka: 
+            url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + "/"
+            auth = 'Bearer ' + token
+            api_call_headers = {'Authorization': auth}
+            api_call_response, url =  requests.get(url, headers=api_call_headers), url
+            content = json.loads(api_call_response.text)
+            print("here")
+            return render_template("kohdeluokka_latauspalvelu_alt.html", data=content, target=target, path=None, filters=None)
     else:
-        data = meta_tiedot(kohdeluokka, auth)
-        try: 
-            return render_template('kohdeluokka_latauspalvelu.html', data=data[target], target=target, filters=filters)
-        except: 
-            return render_template('kohdeluokka_latauspalvelu.html', data={"Error": "No data with this keyword"}, target=target, filters=filters)
+        filters = {}
+        if parts[0] == "kohdeluokka": 
+            content, path = kohdeluokka_dict(target, token)
+            if request.method == 'POST':
+                tie = request.form['road']
+                grouped = group_by_tie(content)
+                if int(tie) in grouped: 
+                    content = grouped[int(tie)]
+                    aosa = request.form['aosa']
+                    losa = request.form['losa']
+
+                    if aosa and losa:
+                        aosa = int(aosa)
+                        losa = int(losa)
+                        finds = tieosa_haku(content, aosa, losa)
+                        content = finds
+
+                        filters = {
+                            'tie'  : tie,
+                            'aosa' : aosa,
+                            'losa' : losa
+                        }
+            else:
+                if type(content) is str: 
+                    return content
+                else: 
+                    first_ten = content[:25]
+                    as_dict = {}
+                    for d in first_ten:
+                        as_dict[d["oid"]] = d
+                    return render_template('kohdeluokka_latauspalvelu.html', data=as_dict, target=target, path=path, filters=filters)
+
+        else:
+            data = meta_tiedot(kohdeluokka, auth)
+            try: 
+                return render_template('kohdeluokka_latauspalvelu.html', data=data[target], target=target, filters=filters)
+            except: 
+                return render_template('kohdeluokka_latauspalvelu.html', data={"Error": "No data with this keyword"}, target=target, filters=filters)
+
+
+# Osa kohdeluokista jakautuu useaan tiedostoon, koska yhtenä tiedostona niistä tulisi liian suuria. 
+# Tällöin kohdeluokan nimi toimii hakemistona, ja data on (yleensä tieosan ja kaistan perusteella) pilkottuina tiedostoina sen alaisuudessa.
+
+@app.route('/mittaustiedot_alt/<key>')
+@token_required
+def mittaustiedot(key):
+    parts = key.split("_")
+    url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + "/" + parts[3]
+    print(url)
+    token = session['token']
+    auth = 'Bearer ' + token
+    api_call_headers = {'Authorization': auth, 'accept': "application/json", 'Content-Type': "application/json"}
+    api_call_response =  requests.get(url, headers=api_call_headers)
+    content = api_call_response.json(cls=ndjson.Decoder)
+    #poistaa latauspalvelun ensimmäisen meta rivin
+    content = content[1:]
+    first_ten = content[:25]
+    as_dict = {}
+    for d in first_ten:
+        as_dict[d["oid"]] = d
+    return render_template('kohdeluokka_latauspalvelu.html', data=as_dict, target=key, path=url, filters={})
+
 
 # Etsii kohdeluokan objectit joiden osat ovat tietyllä välillä
 # Kutsuttaessa oletetaan että tieosat ovat kohdeluokan objectit tietyllä tiellä (yleensä siis group_by_tie(__jokin tie__))
@@ -245,6 +283,7 @@ def download_ndjson(kohdeluokka):
         session.pop('token')
         return redirect(url_for('login', message="Token expired"))
     content = api_response.json(cls=ndjson.Decoder)
+    content = content[1:]
     filename = kohdeluokka.split("_")[2] + ".json"
     #open(filename, 'wb').write(content)
     with open(filename, 'w') as f:
