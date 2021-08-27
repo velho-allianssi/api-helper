@@ -162,14 +162,14 @@ def kohdeluokka_latauspalvelu(class_name, target):
     kohdeluokka = target
     parts = kohdeluokka.split("_") 
     try: 
-            auth = 'Bearer ' + str(session['token'])
-            token = session['token']
+        auth = 'Bearer ' + str(session['token'])
+        token = session['token']
     except: 
         return redirect(url_for('login', message="Your token has expired"))
-        
+
     # Osa kohdeluokista jakautuu useaan tiedostoon, koska yhtenä tiedostona niistä tulisi liian suuria. 
     # Tällöin kohdeluokan nimi toimii hakemistona, ja data on (yleensä tieosan ja kaistan perusteella) pilkottuina tiedostoina sen alaisuudessa.
-    if "palvelutason-mittaus" in kohdeluokka or "topologia" in kohdeluokka: 
+    if "palvelutason-mittaus" in kohdeluokka: 
             url = "https://api-v2.stg.velho.vayla.fi/latauspalvelu/viimeisin/" + parts[1] + "/" + parts[2] + "/"
             auth = 'Bearer ' + token
             api_call_headers = {'Authorization': auth}
@@ -287,7 +287,7 @@ def download_ndjson(kohdeluokka):
     filename = kohdeluokka.split("_")[2] + ".json"
     #open(filename, 'wb').write(content)
     with open(filename, 'w') as f:
-        json.dump(content, f)
+        ndjson.dump(content, f)
 
     return send_file(filename, as_attachment=True)
 
@@ -308,10 +308,10 @@ def download_meta_json(kohdeluokka):
     if api_call_response.status_code == 401:
         session.pop('token')
         return redirect(url_for('login', message="Token expired"))
-    content = api_call_response.json(cls=ndjson.Decoder)
-    filename = filename = "meta_" + kohdeluokka + ".json"
+    content = ndjson.loads(api_call_response.text)
+    filename = filename = "meta_" + kohdeluokka + ".ndjson"
     with open(filename, 'w') as f:
-        json.dump(content, f)
+        ndjson.dump(content, f)
 
     return send_file(filename, as_attachment=True)
 
@@ -401,7 +401,9 @@ def curl_put():
         response_json = response.json()
         upload_url = response_json["url"]
 
-        file = request.files['file']
+        file_form = request.files['file']
+        filename = file_form.filename
+        file = file_form.read()
         #if filename.split('.')[1] == 'csv':
         #   converted = convert_csv_to_json(file)
         upload = requests.put(upload_url, files={'file': file}, verify=False)
@@ -458,12 +460,12 @@ def csv_options():
 def csv_to_json():
     if request.method == 'POST':
         files = request.files['file']
-        filename = files.filename.split(".")[0] + ".json"
+        filename = files.filename.split(".")[0] + ".ndjson"
         try: 
             converted = convert_csv_to_json(files)
 
             with open(filename, 'w') as f:
-                json.dump(converted, f)
+                ndjson.dump(converted, f)
             return send_file(filename, as_attachment=True, attachment_filename=filename)
         except: 
             return "Ongelma muunnoksessa"
