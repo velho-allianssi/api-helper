@@ -403,10 +403,9 @@ def curl_put():
 
         file_form = request.files['file']
         filename = file_form.filename
-        file = file_form.read()
         #if filename.split('.')[1] == 'csv':
         #   converted = convert_csv_to_json(file)
-        upload = requests.put(upload_url, files={'file': file}, verify=False)
+        upload = requests.put(upload_url, files={'file': file_form.read()}, verify=False)
 
         status_url = "https://api-v2.stg.velho.vayla.fi/lahetyspalvelu/api/v1/tila/" + response_json["lahetystunniste"]
         return render_template("upload_check.html", data=requests.get(status_url, headers=headers).json(), lahetystunniste=response_json["lahetystunniste"])
