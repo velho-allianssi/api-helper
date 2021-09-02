@@ -8,11 +8,13 @@ from csv_homogenisoitu import CsvLinearReference
 from collections import OrderedDict
 from csv_json_functions import csv_write_kohdeluokka, convert_csv_to_json
 import datetime, time
+import pytz
 
 app = Flask(__name__)
 # vaihtuu
 app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
 dataset = [ ]
+utc = pytz.UTC
 
 
 def kohdeluokka_dict(kohdeluokka, token):
@@ -45,6 +47,9 @@ def token_required(f):
     def decorated_function(*args, **kwargs):
         try: 
             token = session['token']
+            if utc.localize(datetime.datetime.now()) > session['max-length']:
+                session.clear()
+                return redirect(url_for('login', message="Token expired"))
         except: 
             return redirect(url_for('login', message="Valid token is required, please enter api information"))
         return f(*args, **kwargs)
@@ -56,13 +61,12 @@ def login():
         api_id = request.form['id']
         api_secret = request.form['secret']
         token = login_token(api_id, api_secret)
-        print(token)
         if token:
             # Tärkeä
             session.permanent = True
-            app.permanent_session_lifetime = datetime.timedelta(minutes=60)
+            app.permanent_session_lifetime = datetime.timedelta(hours=1)
             session['token'] = token
-            session['max-length'] = datetime.datetime.now() + datetime.timedelta(hours=1)
+            session['max-length'] = utc.localize(datetime.datetime.now() + datetime.timedelta(hours=1))
             return render_template('index.html')
         else:
             return render_template('login.html', message="Invalid id or secret")
@@ -91,6 +95,7 @@ def meta():
     data = {'accept': 'application/json'}
     api_call_headers = {'Authorization': auth}
     api_call_response = requests.get(token_url, headers=api_call_headers, data=data)
+    # Vaikka Tokenin pitäisi expirata itsekseen, tarkistetaan response_code varmuuden vuoksi
     if api_call_response.status_code == 401:
         session.pop('token')
         return redirect(url_for('login', message="Token expired"))
@@ -200,6 +205,10 @@ def kohdeluokka_latauspalvelu(class_name, target):
                             'aosa' : aosa,
                             'losa' : losa
                         }
+                        as_dict = {}
+                        for d in content:
+                            as_dict[d["oid"]] = d
+                        return render_template('kohdeluokka_latauspalvelu.html', data=as_dict, target=target, path=path, filters=filters)
             else:
                 if type(content) is str: 
                     return content
@@ -460,14 +469,14 @@ def csv_to_json():
     if request.method == 'POST':
         files = request.files['file']
         filename = files.filename.split(".")[0] + ".ndjson"
+        converted = convert_csv_to_json(files)
         try: 
-            converted = convert_csv_to_json(files)
-
             with open(filename, 'w') as f:
                 ndjson.dump(converted, f)
             return send_file(filename, as_attachment=True, attachment_filename=filename)
         except: 
-            return "Ongelma muunnoksessa"
+            return "Virhe muunnoksessa. Lähettävä tiedosto ei saa olla avattuna"
+
 
 
 @app.route('/info')

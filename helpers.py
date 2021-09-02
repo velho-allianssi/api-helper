@@ -14,8 +14,9 @@ def login_token(client_id, client_secret):
         data = {'grant_type': 'client_credentials'}
 
         access_token_response = requests.post(token_url, data=data, verify=False, allow_redirects=False, auth=(client_id, client_secret))
-        if access_token_response.status_code == 200: 
+        if access_token_response.status_code == 200:
                 tokens = json.loads(access_token_response.text)
+                print(tokens['access_token']) 
                 return tokens['access_token']
         else: 
                 None

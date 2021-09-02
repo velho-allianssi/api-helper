@@ -4,7 +4,8 @@ import csv
 import os, sys, getopt
 import pandas as pd
 import json
-
+import copy
+import ast
 # pandas group by googleta
 
 def csv_write_kohdeluokka(content, kohdeluokka_nimi):
@@ -37,12 +38,21 @@ def df_to_formatted_json(df, sep="."):
             current = parsed_row
             for i, k in enumerate(keys):
                 if i==len(keys)-1:
-                    current[k] = v
+                    # Tarkistetaan voiko merkkijono olla numero                   
+                    if v and v.isnumeric():
+                        v = int(v)
+                        current[k] = v
+                    # Tarkistetaan voiko merkkijono olla lista        
+                    elif v and v[0] == "[":
+                        v.replace('\'', '"')
+                        if v != "[]":
+                            current[k] = ast.literal_eval(v)
+                    else:
+                        current[k] = v
                 else:
                     if k not in current.keys():
                         current[k] = {}
                     current = current[k]
-
         # save
         result.append(parsed_row)
     return result
