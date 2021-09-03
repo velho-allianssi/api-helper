@@ -51,7 +51,7 @@
                 <p>{{path}}</p>
             {% endif %}
         </div>
-        {% if 'urakka' not in target %}
+        {% if 'urakka' not in target and 'projekti' not in target %}
             <div class="col col-md-auto">
                 <form action="/{{target}}/csv" style="padding-bottom: 1%">
                     <input type="submit" value="EXPORT as CSV" class="btn btn-success">

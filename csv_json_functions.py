@@ -20,6 +20,7 @@ def csv_write_kohdeluokka(content, kohdeluokka_nimi):
 def convert_csv_to_json(file):
     csv_content = pd.read_csv(file, sep=';', encoding="utf-8-sig", dtype='unicode')
     data = csv_content.where(pd.notnull(csv_content), None)
+    #data.dropna(how='all')
     reverse_normalization = df_to_formatted_json(data)
     return reverse_normalization
 
@@ -42,11 +43,19 @@ def df_to_formatted_json(df, sep="."):
                     if v and v.isnumeric():
                         v = int(v)
                         current[k] = v
-                    # Tarkistetaan voiko merkkijono olla lista        
+                    # Tarkistetaan voiko merkkijono olla numero          
                     elif v and v[0] == "[":
                         v.replace('\'', '"')
                         if v != "[]":
                             current[k] = ast.literal_eval(v)
+                        else: 
+                            current[k] = []
+                    elif v and v == "True":
+                        v = True
+                        current[k] = v
+                    elif v and v == "False":
+                        v = False
+                        current[k] = v
                     else:
                         current[k] = v
                 else:
@@ -78,7 +87,16 @@ def set_for_keys(my_dict, key_arr, val):
         key = key_arr[i]
         if key not in current:
             if i==len(key_arr)-1:
-                current[key] = val
+                if val and val.isnumeric():
+                    val = int(val)
+                    current[key] = val
+                # Tarkistetaan voiko merkkijono olla numero          
+                elif val and val[0] == "[":
+                    val.replace('\'', '"')
+                    if val != "[]":
+                        current[key] = ast.literal_eval(val)
+                else:
+                    current[key] = val
             else:
                 current[key] = {}
         else:
